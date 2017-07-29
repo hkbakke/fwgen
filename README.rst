@@ -52,14 +52,14 @@ Installing from source
 
 ::
 
-    apt-get install python3-venv
+    apt install python3-venv
     git clone https://github.com/hkbakke/fwgen
     cd fwgen
     python3 -m venv venv
     . ./venv/bin/activate
     pip install wheel
     python setup.py clean --all bdist_wheel
-    apt-get install ipset python3-yaml python3-pip
+    apt install ipset python3-yaml python3-pip
     cd dist
     pip3 install <build>.whl
 

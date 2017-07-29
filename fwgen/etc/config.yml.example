@@ -128,11 +128,16 @@
 #  LAN:
 #    interfaces:
 #      - eth0
+#      - eth3
 #    rules:
 #      filter:
 #        INPUT:
 #          - -j ACCEPT
 #        FORWARD:
+#          # Intra-zone forwarding is not allowed by default, so add this if you want
+#          # to enable free flow between zone interfaces
+#          - -o %{LAN} -j ACCEPT
+#
 #          - -o %{WAN} -j ACCEPT
 #          - -o %{DMZ} -j ACCEPT
 #          - -j CUSTOM_REJECT

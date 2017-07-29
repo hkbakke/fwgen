@@ -39,8 +39,16 @@ Requirements
 -  PyYAML
 -  ipset
 
-Building from source
-====================
+Installation
+============
+
+::
+
+    apt install ipset python3-yaml python3-pip
+    pip3 install fwgen
+
+Installing from source
+======================
 
 ::
 
@@ -51,16 +59,12 @@ Building from source
     . ./venv/bin/activate
     pip install wheel
     python setup.py clean --all bdist_wheel
-
-Installation
-============
-
-::
-
     apt-get install ipset python3-yaml python3-pip
     cd dist
     pip3 install <build>.whl
 
+Prepare configuration file
+==========================
 
 By default fwgen will give an error if the config file is missing. This is by design to prevent accidental application of the very restrictive default firewall settings, which basically only allows host internal traffic.
 

@@ -69,7 +69,8 @@ To finish up you should do the following:
 ::
 
     mkdir /etc/fwgen
-    touch /etc/fwgen/config.yml
+    cp /usr/local/lib/python3.5/dist-packages/fwgen/etc/config.yml.example \
+        /etc/fwgen/config.yml
     chown -R root. /etc/fwgen
     chmod 600 /etc/fwgen/*.yml
 
@@ -78,10 +79,10 @@ To finish up you should do the following:
     ln -s /usr/local/lib/python3.5/dist-packages/fwgen/sbin/restore-fw \
         /etc/network/if-pre-up.d/restore-fw
 
+Update ``/etc/fwgen/config.yml`` with your ruleset. Look at the examples in the conifg file for guidance.
+
 Usage
 =====
-
-Edit ``/etc/fwgen/config.yml``. Look at the `example configuration`_ for guidance.
 
 To generate the new ruleset:
 

@@ -1,17 +1,8 @@
-#!/usr/bin/env python3
-
-import argparse
-import sys
 import re
 import subprocess
 import os
-import signal
-from collections import OrderedDict
-
-import yaml
 
 
-VERSION = '0.2.2'
 DEFAULT_CHAINS = {
     'filter': ['INPUT', 'FORWARD', 'OUTPUT'],
     'nat': ['PREROUTING', 'INPUT', 'OUTPUT', 'POSTROUTING'],
@@ -20,6 +11,9 @@ DEFAULT_CHAINS = {
     'security': ['INPUT', 'FORWARD', 'OUTPUT']
 }
 
+
+class InvalidChain(Exception):
+    pass
 
 class FwGen(object):
     def __init__(self, config):
@@ -141,7 +135,7 @@ class FwGen(object):
                     elif chain in ['OUTPUT', 'POSTROUTING']:
                         yield (table, '-A %s -o %%{%s} -j %s' % (chain, zone, dispatcher_chain))
                     else:
-                        raise Exception('%s is not a valid default chain' % chain)
+                        raise InvalidChain('%s is not a valid default chain' % chain)
 
     def _expand_zones(self, rule):
         zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
@@ -263,105 +257,3 @@ class FwGen(object):
 
         # Reset ipsets after the rules are removed to ensure ipsets are not in use
         self._apply_ipsets(self._output_ipsets(reset=True))
-
-
-class TimeoutExpired(Exception):
-    pass
-
-def alarm_handler(signum, frame):
-    raise TimeoutExpired
-
-def wait_for_input(message, timeout):
-    signal.signal(signal.SIGALRM, alarm_handler)
-    signal.alarm(timeout)
-
-    try:
-        return input(message)
-    finally:
-        # Cancel alarm
-        signal.alarm(0)
-
-def dict_merge(d1, d2):
-    """
-    Deep merge d1 into d2
-    """
-    for k, v in d1.items():
-        if isinstance(v, dict):
-            node = d2.setdefault(k, {})
-            dict_merge(v, node)
-        else:
-            d2[k] = v
-
-    return d2
-
-def setup_yaml():
-    """
-    Use to preserve dict order from imported yaml config
-    """
-    represent_dict_order = lambda self, data: self.represent_mapping('tag:yaml.org,2002:map',
-                                                                     data.items())
-    yaml.add_representer(OrderedDict, represent_dict_order)
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--version', action='store_true', help='Print version and exit')
-    parser.add_argument('--config', metavar='PATH', help='Override path to config file')
-    parser.add_argument('--defaults', metavar='PATH', help='Override path to defaults file')
-    parser.add_argument(
-        '--with-reset',
-        action='store_true',
-        help='Clear the firewall before reapplying. Recommended only if ipsets in '
-             'use are preventing you from applying the new configuration.'
-    )
-    mutex_group = parser.add_mutually_exclusive_group()
-    mutex_group.add_argument('--timeout', metavar='SECONDS', type=int,
-                             help='Override timeout for rollback')
-    mutex_group.add_argument(
-        '--no-confirm',
-        action='store_true',
-        help="Don't ask for confirmation before storing ruleset"
-    )
-    args = parser.parse_args()
-
-    if args.version:
-        print('fwgen v%s' % VERSION)
-        sys.exit(0)
-
-    defaults = b'/etc/fwgen/defaults.yml'
-    if args.defaults:
-        defaults = args.defaults
-
-    user_config = b'/etc/fwgen/config.yml'
-    if args.config:
-        user_config = args.config
-
-    setup_yaml()
-    with open(defaults, 'r') as f:
-        config = yaml.load(f)
-    with open(user_config, 'r') as f:
-        config = dict_merge(yaml.load(f), config)
-
-    fw = FwGen(config)
-    if args.with_reset:
-        fw.reset()
-    if args.no_confirm:
-        fw.commit()
-    else:
-        timeout = 30
-        if args.timeout:
-            timeout = args.timeout
-
-        print('\nRolling back in %d seconds if not confirmed.\n' % timeout)
-        fw.apply()
-        message = ('The ruleset has been applied successfully! Press \'Enter\' to make the '
-                   'new ruleset persistent.\n')
-
-        try:
-            wait_for_input(message, timeout)
-            fw.save()
-        except (TimeoutExpired, KeyboardInterrupt):
-            print('No confirmation received. Rolling back...\n')
-            fw.rollback()
-
-if __name__ == '__main__':
-    sys.exit(main())

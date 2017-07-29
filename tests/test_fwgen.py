@@ -1,6 +1,6 @@
 import pytest
 
-from fwgen import FwGen
+import fwgen
 
 class TestFwGen(object):
     def test_zone_expansion(self):
@@ -14,7 +14,7 @@ class TestFwGen(object):
                 }
             }
         }
-        fw = FwGen(config)
+        fw = fwgen.FwGen(config)
         rule = '-A FORWARD -i %{lan} -o %{dmz} -j ACCEPT'
         rules_expanded = [
             '-A FORWARD -i eth0 -o eth2 -j ACCEPT',
@@ -37,7 +37,7 @@ class TestFwGen(object):
                 }
             }
         }
-        fw = FwGen(config)
+        fw = fwgen.FwGen(config)
         rule = '-A INPUT -i lo -j ACCEPT'
         rules_expanded = [rule]
 
@@ -51,7 +51,7 @@ class TestFwGen(object):
                 'host2': '192.168.0.10'
             }
         }
-        fw = FwGen(config)
+        fw = fwgen.FwGen(config)
         rule = '-A PREROUTING -s ${host1} -j DNAT --to-destination ${host2}'
         rule_substituted = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
 
@@ -60,7 +60,7 @@ class TestFwGen(object):
 
     def test_no_variable_substitution(self):
         config = {}
-        fw = FwGen(config)
+        fw = fwgen.FwGen(config)
         rule = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
         rule_substituted = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
 

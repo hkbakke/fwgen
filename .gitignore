@@ -1,5 +1,8 @@
-venv/
 __pycache__/
 .cache/
 .coverage
 *.swp
+*.egg-info/
+build/
+dist/
+venv/

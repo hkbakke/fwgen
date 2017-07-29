@@ -62,9 +62,7 @@ Installation
     pip3 install <build>.whl
 
 
-By default fwgen will give an error if a config file is missing. This is by
-design to prevent accidental application of the very restrictive default
-firewall settings, which basically only allows host internal traffic.
+By default fwgen will give an error if the config file is missing. This is by design to prevent accidental application of the very restrictive default firewall settings, which basically only allows host internal traffic.
 
 To finish up you should do the following:
 
@@ -77,13 +75,13 @@ To finish up you should do the following:
 
     # On Debian-based distros you should use restore-fw to ensure the
     # firewall is activated on reboots and ifup
-    ln -s /usr/local/lib/python3.5/dist-packages/fwgen/sbin/restore-fw /etc/network/if-pre-up.d/restore-fw
+    ln -s /usr/local/lib/python3.5/dist-packages/fwgen/sbin/restore-fw \
+        /etc/network/if-pre-up.d/restore-fw
 
 Usage
 =====
 
-Edit ``/etc/fwgen/config.yml``. Look at the `example configuration`_ for
-guidance.
+Edit ``/etc/fwgen/config.yml``. Look at the `example configuration`_ for guidance.
 
 To generate the new ruleset:
 

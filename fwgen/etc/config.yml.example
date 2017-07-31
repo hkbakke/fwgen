@@ -34,7 +34,7 @@
 
 #global:
 #  # You may override the default filter policies of "DROP". However, this is not really
-#  # recommended. It is a better practice to add a explicit ACCEPT target where needed in
+#  # recommended. It is a better practice to add an explicit ACCEPT target where needed in
 #  # the ruleset to prevent accidental holes in your firewall.
 #  policy:
 #    filter:

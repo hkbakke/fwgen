@@ -1,7 +1,7 @@
 Introduction
 ============
 
-fwgen is a small management framework to simplify the management of
+fwgen is a small framework to simplify the management of
 ip(6)tables based firewalls, that also integrates ipset support and
 zones in a non-restrictive way. It is *not* an abstraction layer of the
 iptables syntax, so you still need to understand how to write iptables

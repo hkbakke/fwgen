@@ -23,7 +23,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.3.0b4',
+    version='0.3.0',
 
     description='A simple management framework for ip(6)tables based firewalls',
     long_description=long_description,
@@ -44,11 +44,12 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
         'Intended Audience :: System Administrators',
         'Topic :: System :: Networking :: Firewalls',
+        'Operating System :: POSIX :: Linux',
 
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: MIT License',

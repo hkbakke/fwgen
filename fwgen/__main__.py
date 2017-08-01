@@ -1,5 +1,5 @@
-import sys
+import fwgen.fwgen_cmd.main as main
 
-import fwgen.fwgen_cmd
 
-sys.exit(fwgen.fwgen_cmd.main())
+if __name__ == '__main__':
+    main()

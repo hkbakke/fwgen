@@ -2,9 +2,12 @@ import argparse
 import signal
 from collections import OrderedDict
 from pkg_resources import resource_filename
+import sys
+import subprocess
 
 import yaml
 import fwgen
+
 
 class TimeoutExpired(Exception):
     pass
@@ -43,7 +46,7 @@ def setup_yaml():
                                                                      data.items())
     yaml.add_representer(OrderedDict, represent_dict_order)
 
-def main():
+def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', metavar='PATH', help='Override path to config file')
     parser.add_argument('--defaults', metavar='PATH', help='Override path to defaults file')
@@ -98,3 +101,16 @@ def main():
         except (TimeoutExpired, KeyboardInterrupt):
             print('No confirmation received. Rolling back...\n')
             fw.rollback()
+
+def main():
+    try:
+        sys.exit(_main())
+    except subprocess.CalledProcessError as e:
+        print('ERROR: %s' % e)
+        sys.exit(1)
+    except fwgen.InvalidChain as e:
+        print('ERROR: %s' % e)
+        sys.exit(2)
+    except KeyboardInterrupt:
+        print('ERROR: Aborted by user!')
+        sys.exit(130)

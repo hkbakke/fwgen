@@ -29,7 +29,7 @@ Advantages of using fwgen:
 Requirements
 ============
 
--  At least Python 3.5
+-  At least Python 3.4
 -  PyYAML
 -  ipset
 
@@ -56,8 +56,7 @@ Installing from source
     deactivate  # Unless you only want to install it in your venv
 
     apt install ipset python3-yaml python3-pip
-    cd dist
-    pip3 install <build>.whl
+    pip3 install dist/<build>.whl
 
 Prepare configuration file
 ==========================

@@ -70,15 +70,19 @@ def _main():
     if args.defaults:
         defaults = args.defaults
 
-    user_config = b'/etc/fwgen/config.yml'
+    user_config = '/etc/fwgen/config.yml'
     if args.config:
         user_config = args.config
 
     setup_yaml()
-    with open(defaults, 'r') as f:
-        config = yaml.load(f)
-    with open(user_config, 'r') as f:
-        config = dict_merge(yaml.load(f), config)
+    try:
+        with open(defaults, 'r') as f:
+            config = yaml.load(f)
+        with open(user_config, 'r') as f:
+            config = dict_merge(yaml.load(f), config)
+    except FileNotFoundError as e:
+        print('ERROR: %s' % e)
+        sys.exit(3)
 
     fw = fwgen.FwGen(config)
     if args.with_reset:

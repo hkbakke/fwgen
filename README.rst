@@ -29,7 +29,6 @@ Advantages of using fwgen:
 Requirements
 ============
 
--  At least Python 3.4
 -  PyYAML
 -  ipset
 
@@ -38,8 +37,13 @@ Installation
 
 ::
 
+    # Python 3.x (recommended)
     apt install ipset python3-yaml python3-pip
     pip3 install fwgen
+
+    # Python 2.x
+    apt install ipset python-yaml python-pip
+    pip install fwgen
 
 Installing from source
 ======================

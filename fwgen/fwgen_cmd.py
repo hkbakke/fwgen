@@ -9,6 +9,13 @@ import yaml
 import fwgen
 
 
+# Python 2.7 compatibility
+try:
+    input = raw_input
+except NameError:
+    pass
+
+
 class TimeoutExpired(Exception):
     pass
 

@@ -48,10 +48,7 @@ class FwGen(object):
     @staticmethod
     def _get_netns():
         cmd = ['ip', 'netns', 'identify', str(os.getpid())]
-        try:
-            output = subprocess.run(cmd, stdout=subprocess.PIPE, check=True).stdout
-        except AttributeError:
-            output = subprocess.check_output(cmd)
+        output = subprocess.check_output(cmd)
         return output.strip()
 
     def _output_ipsets(self, reset=False):
@@ -101,7 +98,8 @@ class FwGen(object):
             except KeyError:
                 pass
 
-            yield from self._get_rules(rules)
+            for rule in self._get_rules(rules):
+                yield rule
 
     def _get_helper_chains(self):
         rules = {}
@@ -115,7 +113,8 @@ class FwGen(object):
             for chain in chains:
                 yield self._get_new_chain_rule(table, chain)
 
-        yield from self._get_rules(rules)
+        for rule in self._get_rules(rules):
+            yield rule
 
     @staticmethod
     def _get_rules(rules):
@@ -151,7 +150,9 @@ class FwGen(object):
 
             for interface in self.config['zones'][zone]['interfaces']:
                 rule_expanded = '%s%s%s' % (match.group(1), interface, match.group(3))
-                yield from self._expand_zones(rule_expanded)
+
+                for rule_ in self._expand_zones(rule_expanded):
+                    yield rule_
         else:
             yield rule
 
@@ -169,7 +170,8 @@ class FwGen(object):
 
     def _parse_rule(self, rule):
         rule = self._substitute_variables(rule)
-        yield from self._expand_zones(rule)
+        for rule_expanded in self._expand_zones(rule):
+            yield rule_expanded
 
     def _output_rules(self, rules):
         for table in DEFAULT_CHAINS:
@@ -177,7 +179,8 @@ class FwGen(object):
 
             for rule_table, rule in rules:
                 if rule_table == table:
-                    yield from self._parse_rule(rule)
+                    for rule_parsed in self._parse_rule(rule):
+                        yield rule_parsed
 
             yield 'COMMIT'
 
@@ -194,38 +197,16 @@ class FwGen(object):
 
     def _save_rules(self, path, family):
         with open(path, 'wb') as f:
-            try:
-                subprocess.run(self._save_cmd[family], stdout=f, check=True)
-            except AttributeError:
-                subprocess.check_call(self._save_cmd[family], stdout=f)
+            subprocess.check_call(self._save_cmd[family], stdout=f)
 
-    def _apply_rules(self, rules, family):
+    def _apply_rules(self, rules, rule_type):
         data = ('%s\n' % '\n'.join(rules)).encode('utf-8')
-        try:
-            subprocess.run(self._restore_cmd[family], input=data, check=True)
-        except AttributeError:
-            subprocess.check_output(self._restore_cmd[family], input=data)
+        p = subprocess.Popen(self._restore_cmd[rule_type], stdin=subprocess.PIPE)
+        p.communicate(data)
 
-    def _restore_rules(self, path, family):
+    def _restore_rules(self, path, rule_type):
         with open(path, 'rb') as f:
-            try:
-                subprocess.run(self._restore_cmd[family], stdin=f, check=True)
-            except AttributeError:
-                subprocess.check_call(self._restore_cmd[family], stdin=f)
-
-    def _apply_ipsets(self, ipsets):
-        data = ('%s\n' % '\n'.join(ipsets)).encode('utf-8')
-        try:
-            subprocess.run(self._restore_cmd['ipset'], input=data, check=True)
-        except AttributeError:
-            subprocess.check_output(self._restore_cmd['ipset'], input=data)
-
-    def _restore_ipsets(self, path):
-        with open(path, 'rb') as f:
-            try:
-                subprocess.run(self._restore_cmd['ipset'], stdin=f, check=True)
-            except AttributeError:
-                subprocess.check_call(self._restore_cmd['ipset'], stdin=f)
+            subprocess.check_call(self._restore_cmd[rule_type], stdin=f)
 
     def save(self):
         for family in self._ip_families:
@@ -235,7 +216,7 @@ class FwGen(object):
 
     def apply(self):
         # Apply ipsets first to ensure they exist when the rules are applied
-        self._apply_ipsets(self._output_ipsets())
+        self._apply_rules(self._output_ipsets(), 'ipset')
 
         rules = []
         rules.extend(self._get_policy_rules())
@@ -259,9 +240,9 @@ class FwGen(object):
                 self.reset(family)
 
         if os.path.exists(self._restore_file['ipset']):
-            self._restore_ipsets(self._restore_file['ipset'])
+            self._restore_rules(self._restore_file['ipset'], 'ipset')
         else:
-            self._apply_ipsets(self._output_ipsets(reset=True))
+            self._apply_rules(self._output_ipsets(reset=True), 'ipset')
 
     def reset(self, family=None):
         families = self._ip_families
@@ -276,4 +257,4 @@ class FwGen(object):
             self._apply_rules(self._output_rules(rules), family_)
 
         # Reset ipsets after the rules are removed to ensure ipsets are not in use
-        self._apply_ipsets(self._output_ipsets(reset=True))
+        self._apply_rules(self._output_ipsets(reset=True), 'ipset')

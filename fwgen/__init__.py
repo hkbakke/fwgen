@@ -1,3 +1,3 @@
-from fwgen.fwgen import FwGen, InvalidChain
+from .fwgen import FwGen, InvalidChain
 
 __all__ = ['FwGen', 'InvalidChain']

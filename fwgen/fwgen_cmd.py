@@ -1,9 +1,9 @@
 import argparse
 import signal
-from collections import OrderedDict
-from pkg_resources import resource_filename
 import sys
 import subprocess
+from collections import OrderedDict
+from pkg_resources import resource_filename
 
 import yaml
 import fwgen

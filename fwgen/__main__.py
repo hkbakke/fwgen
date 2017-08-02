@@ -1,4 +1,4 @@
-import fwgen.fwgen_cmd.main as main
+from fwgen.fwgen_cmd import main as main
 
 
 if __name__ == '__main__':

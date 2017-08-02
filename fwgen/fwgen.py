@@ -21,9 +21,9 @@ class FwGen(object):
         self._ip_families = ['ip', 'ip6']
         etc = self._get_etc()
         self._restore_file = {
-            'ip': b'%s/iptables.restore' % etc,
-            'ip6': b'%s/ip6tables.restore' % etc,
-            'ipset': b'%s/ipsets.restore' % etc
+            'ip': '%s/iptables.restore' % etc,
+            'ip6': '%s/ip6tables.restore' % etc,
+            'ipset': '%s/ipsets.restore' % etc
         }
         self._restore_cmd = {
             'ip': ['iptables-restore'],
@@ -36,18 +36,23 @@ class FwGen(object):
         }
 
     def _get_etc(self):
-        etc = b'/etc'
+        etc = '/etc'
         netns = self._get_netns()
+
         if netns:
-            etc = b'/etc/netns/%s' % netns
+            etc = '/etc/netns/%s' % netns
             os.makedirs(etc, exist_ok=True)
 
         return etc
 
     @staticmethod
     def _get_netns():
-        output = subprocess.run(['ip', 'netns', 'identify'], stdout=subprocess.PIPE, check=True)
-        return output.stdout.strip()
+        cmd = ['ip', 'netns', 'identify', str(os.getpid())]
+        try:
+            output = subprocess.run(cmd, stdout=subprocess.PIPE, check=True).stdout
+        except AttributeError:
+            output = subprocess.check_output(cmd)
+        return output.strip()
 
     def _output_ipsets(self, reset=False):
         if reset:
@@ -189,23 +194,38 @@ class FwGen(object):
 
     def _save_rules(self, path, family):
         with open(path, 'wb') as f:
-            subprocess.run(self._save_cmd[family], stdout=f, check=True)
+            try:
+                subprocess.run(self._save_cmd[family], stdout=f, check=True)
+            except AttributeError:
+                subprocess.check_call(self._save_cmd[family], stdout=f)
 
     def _apply_rules(self, rules, family):
-        stdin = ('%s\n' % '\n'.join(rules)).encode('utf-8')
-        subprocess.run(self._restore_cmd[family], input=stdin, check=True)
+        data = ('%s\n' % '\n'.join(rules)).encode('utf-8')
+        try:
+            subprocess.run(self._restore_cmd[family], input=data, check=True)
+        except AttributeError:
+            subprocess.check_output(self._restore_cmd[family], input=data)
 
     def _restore_rules(self, path, family):
         with open(path, 'rb') as f:
-            subprocess.run(self._restore_cmd[family], stdin=f, check=True)
+            try:
+                subprocess.run(self._restore_cmd[family], stdin=f, check=True)
+            except AttributeError:
+                subprocess.check_call(self._restore_cmd[family], stdin=f)
 
     def _apply_ipsets(self, ipsets):
-        stdin = ('%s\n' % '\n'.join(ipsets)).encode('utf-8')
-        subprocess.run(self._restore_cmd['ipset'], input=stdin, check=True)
+        data = ('%s\n' % '\n'.join(ipsets)).encode('utf-8')
+        try:
+            subprocess.run(self._restore_cmd['ipset'], input=data, check=True)
+        except AttributeError:
+            subprocess.check_output(self._restore_cmd['ipset'], input=data)
 
     def _restore_ipsets(self, path):
         with open(path, 'rb') as f:
-            subprocess.run(self._restore_cmd['ipset'], stdin=f, check=True)
+            try:
+                subprocess.run(self._restore_cmd['ipset'], stdin=f, check=True)
+            except AttributeError:
+                subprocess.check_call(self._restore_cmd['ipset'], stdin=f)
 
     def save(self):
         for family in self._ip_families:

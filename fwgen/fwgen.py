@@ -34,6 +34,8 @@ class FwGen(object):
             'ip': ['iptables-save'],
             'ip6': ['ip6tables-save']
         }
+        self.zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
+        self.variable_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
 
     def _get_etc(self):
         etc = '/etc'
@@ -142,8 +144,7 @@ class FwGen(object):
                         raise InvalidChain('%s is not a valid default chain' % chain)
 
     def _expand_zones(self, rule):
-        zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
-        match = re.search(zone_pattern, rule)
+        match = re.search(self.zone_pattern, rule)
 
         if match:
             zone = match.group(2)
@@ -157,8 +158,7 @@ class FwGen(object):
             yield rule
 
     def _substitute_variables(self, string):
-        variable_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
-        match = re.search(variable_pattern, string)
+        match = re.search(self.variable_pattern, string)
 
         if match:
             variable = match.group(2)

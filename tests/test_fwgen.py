@@ -1,6 +1,16 @@
 import pytest
+from collections import OrderedDict
 
 import fwgen
+
+
+class OrderedDefaultDict(OrderedDict):
+    """
+    Helper class for ordered default dicts
+    """
+    def __missing__(self, key):
+        val = self[key] = OrderedDefaultDict()
+        return val
 
 class TestFwGen(object):
     def test_zone_expansion(self):
@@ -132,3 +142,49 @@ class TestFwGen(object):
             ('raw', ':OUTPUT ACCEPT'),
         ]
         assert sorted([i for i in fw._get_policy_rules(reset=True)]) == sorted(policy_rules)
+
+    def test_get_rules(rules):
+        rules = OrderedDefaultDict()
+        rules['filter']['INPUT'] = [
+            '-p tcp --dport 22 -j ACCEPT',
+            '-p icmp --icmp-type echo-request -j ACCEPT',
+            '-j CUSTOM_REJECT'
+        ]
+        rules['filter']['OUTPUT'] = [
+            '-j ACCEPT'
+        ]
+        rules['nat']['POSTROUTING'] = [
+            '-j MASQUERADE'
+        ]
+        fw = fwgen.FwGen({})
+        rule_list = [
+            ('filter', '-A INPUT -p tcp --dport 22 -j ACCEPT'),
+            ('filter', '-A INPUT -p icmp --icmp-type echo-request -j ACCEPT'),
+            ('filter', '-A INPUT -j CUSTOM_REJECT'),
+            ('filter', '-A OUTPUT -j ACCEPT'),
+            ('nat', '-A POSTROUTING -j MASQUERADE')
+        ]
+        assert [i for i in fw._get_rules(rules)] == rule_list
+
+    def test_get_zone_rules(self):
+        config = OrderedDefaultDict()
+        config['zones']['LAN']['rules']['filter']['INPUT'] = [
+            '-p tcp --dport 22 -j ACCEPT',
+            '-p icmp --icmp-type echo-request -j ACCEPT',
+            '-j CUSTOM_REJECT'
+        ]
+        config['zones']['LAN']['rules']['filter']['OUTPUT'] = [
+            '-j ACCEPT'
+        ]
+        config['zones']['LAN']['rules']['nat']['POSTROUTING'] = [
+            '-j MASQUERADE'
+        ]
+        fw = fwgen.FwGen(config)
+        rule_list = [
+            ('filter', '-A LAN_INPUT -p tcp --dport 22 -j ACCEPT'),
+            ('filter', '-A LAN_INPUT -p icmp --icmp-type echo-request -j ACCEPT'),
+            ('filter', '-A LAN_INPUT -j CUSTOM_REJECT'),
+            ('filter', '-A LAN_OUTPUT -j ACCEPT'),
+            ('nat', '-A LAN_POSTROUTING -j MASQUERADE')
+        ]
+        assert [i for i in fw._get_zone_rules()] == rule_list

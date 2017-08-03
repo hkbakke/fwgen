@@ -188,3 +188,24 @@ class TestFwGen(object):
             ('nat', '-A LAN_POSTROUTING -j MASQUERADE')
         ]
         assert [i for i in fw._get_zone_rules()] == rule_list
+
+    def test_get_helper_chains(self):
+        config = OrderedDefaultDict()
+        config['global']['helper_chains']['filter']['CUSTOM_REJECT'] = [
+            '-p tcp -j REJECT --reject-with tcp-reset',
+            '-j REJECT'
+        ]
+        config['global']['helper_chains']['filter']['LOG_DROP'] = [
+            '-j LOG --log-level warning --log-prefix "IPTABLES_DROP: "',
+            '-j DROP'
+        ]
+        fw = fwgen.FwGen(config)
+        rule_list = [
+            ('filter', ':CUSTOM_REJECT -'),
+            ('filter', ':LOG_DROP -'),
+            ('filter', '-A CUSTOM_REJECT -p tcp -j REJECT --reject-with tcp-reset'),
+            ('filter', '-A CUSTOM_REJECT -j REJECT'),
+            ('filter', '-A LOG_DROP -j LOG --log-level warning --log-prefix "IPTABLES_DROP: "'),
+            ('filter', '-A LOG_DROP -j DROP'),
+        ]
+        assert [i for i in fw._get_helper_chains()] == rule_list

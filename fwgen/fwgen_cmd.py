@@ -45,13 +45,19 @@ def dict_merge(d1, d2):
 
     return d2
 
-def setup_yaml():
-    """
-    Use to preserve dict order from imported yaml config
-    """
-    represent_dict_order = lambda self, data: self.represent_mapping('tag:yaml.org,2002:map',
-                                                                     data.items())
-    yaml.add_representer(OrderedDict, represent_dict_order)
+def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
+    class OrderedLoader(Loader):
+        pass
+
+    def construct_mapping(loader, node):
+        loader.flatten_mapping(node)
+        return object_pairs_hook(loader.construct_pairs(node))
+
+    OrderedLoader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+        construct_mapping)
+
+    return yaml.load(stream, OrderedLoader)
 
 def _main():
     parser = argparse.ArgumentParser()
@@ -81,12 +87,11 @@ def _main():
     if args.config:
         user_config = args.config
 
-    setup_yaml()
     try:
         with open(defaults, 'r') as f:
-            config = yaml.load(f)
+            config = yaml_load_ordered(f)
         with open(user_config, 'r') as f:
-            config = dict_merge(yaml.load(f), config)
+            config = dict_merge(yaml_load_ordered(f), config)
     except FileNotFoundError as e:
         print('ERROR: %s' % e)
         sys.exit(3)

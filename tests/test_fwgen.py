@@ -209,3 +209,7 @@ class TestFwGen(object):
             ('filter', '-A LOG_DROP -j DROP'),
         ]
         assert [i for i in fw._get_helper_chains()] == rule_list
+
+    def test_get_new_chain_rule(self):
+        fw = fwgen.FwGen({})
+        assert fw._get_new_chain_rule('filter', 'LOG_REJECT') == ('filter', ':LOG_REJECT -')

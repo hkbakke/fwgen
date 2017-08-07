@@ -82,7 +82,7 @@ To finish up you should do the following (replace python3 with python if python 
     ln -s $(python3 -c 'import fwgen, os; print(os.path.dirname(fwgen.__file__))')/sbin/restore-fw \
         /etc/network/if-pre-up.d/restore-fw
 
-Update ``/etc/fwgen/config.yml`` with your ruleset. Look at the examples in the config file for guidance.
+Update ``/etc/fwgen/config.yml`` with your ruleset. Look at the `example configuration`_ for guidance.
 
 Usage
 =====
@@ -105,4 +105,4 @@ If ipsets in use causes issues with applying the new ruleset:
 
     fwgen --with-reset
 
-.. _example configuration: fwgen/etc/config.yml.example
+.. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/config.yml.example

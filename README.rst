@@ -67,19 +67,19 @@ Prepare configuration file
 
 By default fwgen will give an error if the config file is missing. This is by design to prevent accidental application of the very restrictive default firewall settings, which basically only allows host internal traffic.
 
-To finish up you should do the following:
+To finish up you should do the following (replace python3 with python if python 2 is used):
 
 ::
 
     mkdir /etc/fwgen
-    cp /usr/local/lib/python3.5/dist-packages/fwgen/etc/config.yml.example \
+    cp $(python3 -c 'import fwgen, os; print(os.path.dirname(fwgen.__file__))')/etc/config.yml.example \
         /etc/fwgen/config.yml
     chown -R root. /etc/fwgen
     chmod 600 /etc/fwgen/*.yml
 
     # On Debian-based distros you should use restore-fw to ensure the
     # firewall is activated on reboots and ifup
-    ln -s /usr/local/lib/python3.5/dist-packages/fwgen/sbin/restore-fw \
+    ln -s $(python3 -c 'import fwgen, os; print(os.path.dirname(fwgen.__file__))')/sbin/restore-fw \
         /etc/network/if-pre-up.d/restore-fw
 
 Update ``/etc/fwgen/config.yml`` with your ruleset. Look at the examples in the config file for guidance.

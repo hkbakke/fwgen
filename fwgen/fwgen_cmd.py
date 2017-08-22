@@ -39,7 +39,7 @@ def ordered_dict_merge(d1, d2):
     for k, v in d1.items():
         if isinstance(v, OrderedDict):
             node = d2.setdefault(k, OrderedDict())
-            dict_merge(v, node)
+            ordered_dict_merge(v, node)
         else:
             d2[k] = v
 

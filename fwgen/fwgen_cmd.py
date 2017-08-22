@@ -32,13 +32,13 @@ def wait_for_input(message, timeout):
         # Cancel alarm
         signal.alarm(0)
 
-def dict_merge(d1, d2):
+def ordered_dict_merge(d1, d2):
     """
     Deep merge d1 into d2
     """
     for k, v in d1.items():
-        if isinstance(v, dict):
-            node = d2.setdefault(k, {})
+        if isinstance(v, OrderedDict):
+            node = d2.setdefault(k, OrderedDict())
             dict_merge(v, node)
         else:
             d2[k] = v
@@ -91,7 +91,7 @@ def _main():
         with open(defaults, 'r') as f:
             config = yaml_load_ordered(f)
         with open(user_config, 'r') as f:
-            config = dict_merge(yaml_load_ordered(f), config)
+            config = ordered_dict_merge(yaml_load_ordered(f), config)
     except FileNotFoundError as e:
         print('ERROR: %s' % e)
         sys.exit(3)

@@ -121,12 +121,9 @@ def _main():
 def main():
     try:
         sys.exit(_main())
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print('ERROR: %s' % e)
         sys.exit(1)
-    except fwgen.InvalidChain as e:
-        print('ERROR: %s' % e)
-        sys.exit(2)
     except KeyboardInterrupt:
         print('ERROR: Aborted by user!')
         sys.exit(130)

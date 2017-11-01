@@ -15,6 +15,9 @@ DEFAULT_CHAINS = {
 class InvalidChain(Exception):
     pass
 
+class RulesetError(Exception):
+    pass
+
 class FwGen(object):
     def __init__(self, config):
         self.config = config
@@ -201,8 +204,15 @@ class FwGen(object):
 
     def _apply_rules(self, rules, rule_type):
         data = ('%s\n' % '\n'.join(rules)).encode('utf-8')
-        p = subprocess.Popen(self._restore_cmd[rule_type], stdin=subprocess.PIPE)
-        p.communicate(data)
+        p = subprocess.Popen(
+            self._restore_cmd[rule_type],
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE
+            )
+        _, stderr = p.communicate(data)
+
+        if p.returncode != 0:
+            raise RulesetError(stderr.decode('utf-8'))
 
     def _restore_rules(self, path, rule_type):
         with open(path, 'rb') as f:

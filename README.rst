@@ -55,7 +55,7 @@ Installing from source
     cd fwgen
     python3 -m venv venv
     . ./venv/bin/activate
-    pip install wheel
+    pip3 install wheel
     python3 setup.py clean --all bdist_wheel --universal
     deactivate  # Unless you only want to install it in your venv
 

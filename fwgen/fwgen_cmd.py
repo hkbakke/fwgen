@@ -69,6 +69,11 @@ def _main():
         help='Clear the firewall before reapplying. Recommended only if ipsets in '
              'use are preventing you from applying the new configuration.'
     )
+    parser.add_argument(
+        '--no-save',
+        action='store_true',
+        help='Apply the ruleset but do not make it persistent'
+    )
     mutex_group = parser.add_mutually_exclusive_group()
     mutex_group.add_argument('--timeout', metavar='SECONDS', type=int,
                              help='Override timeout for rollback')
@@ -102,7 +107,10 @@ def _main():
         fw.reset()
 
     if args.no_confirm:
-        fw.commit()
+        if args.no_save:
+            fw.apply()
+        else:
+            fw.commit()
     else:
         timeout = 30
         if args.timeout:
@@ -110,12 +118,18 @@ def _main():
 
         print('\nRolling back in %d seconds if not confirmed.\n' % timeout)
         fw.apply()
-        message = ('The ruleset has been applied successfully! Press \'Enter\' to make the '
-                   'new ruleset persistent.\n')
+
+        if args.no_save:
+            message = ('The ruleset has been applied successfully! Press \'Enter\' to confirm.\n')
+        else:
+            message = ('The ruleset has been applied successfully! Press \'Enter\' to make the '
+                       'new ruleset persistent.\n')
 
         try:
             wait_for_input(message, timeout)
-            fw.save()
+
+            if not args.no_save:
+                fw.save()
         except (TimeoutExpired, KeyboardInterrupt):
             print('No confirmation received. Rolling back...\n')
             fw.rollback()

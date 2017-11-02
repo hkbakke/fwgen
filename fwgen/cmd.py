@@ -1,7 +1,7 @@
 import argparse
 import signal
 import sys
-import subprocess
+import json
 from collections import OrderedDict
 from pkg_resources import resource_filename
 
@@ -51,25 +51,19 @@ def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', metavar='PATH', help='Override path to config file')
     parser.add_argument('--defaults', metavar='PATH', help='Override path to defaults file')
-    parser.add_argument(
-        '--with-reset',
-        action='store_true',
-        help='Clear the firewall before reapplying. Recommended only if ipsets in '
-             'use are preventing you from applying the new configuration.'
-    )
-    parser.add_argument(
-        '--no-save',
-        action='store_true',
-        help='Apply the ruleset but do not make it persistent'
-    )
+    parser.add_argument('--config-json', metavar='JSON', help='JSON formatted config')
+    parser.add_argument('--with-reset', action='store_true',
+                        help='Clear the firewall before reapplying. Recommended only if ipsets '
+                             'in use are preventing you from applying the new configuration.')
+    parser.add_argument('--no-save', action='store_true',
+                        help='Apply the ruleset but do not make it persistent')
+
     mutex_group = parser.add_mutually_exclusive_group()
     mutex_group.add_argument('--timeout', metavar='SECONDS', type=int,
                              help='Override timeout for rollback')
-    mutex_group.add_argument(
-        '--no-confirm',
-        action='store_true',
-        help="Don't ask for confirmation before storing ruleset"
-    )
+    mutex_group.add_argument('--no-confirm', action='store_true',
+                             help="Don't ask for confirmation before storing ruleset")
+
     args = parser.parse_args()
 
     defaults = resource_filename(__name__, 'etc/defaults.yml')
@@ -80,6 +74,14 @@ def _main():
     if args.config:
         user_config = args.config
 
+    #
+    # Configuration merge order. Each merge overrides the previous one if a parameter
+    # is provided in both configurations.
+    #
+    #   1. config from defaults file
+    #   2. config from config file
+    #   3. config provided at runtime via --config-json
+    #
     try:
         with open(defaults, 'r') as f:
             config = yaml_load_ordered(f)
@@ -89,6 +91,13 @@ def _main():
         print('ERROR: %s' % e)
         sys.exit(3)
 
+    if args.config_json:
+        json_config = json.loads(args.config_json, object_pairs_hook=OrderedDict)
+        config = ordered_dict_merge(json_config, config)
+
+    #
+    # Start doing actual firewall stuff
+    #
     fw = fwgen.FwGen(config)
 
     if args.with_reset:

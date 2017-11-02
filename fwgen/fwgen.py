@@ -1,6 +1,9 @@
 import re
 import subprocess
 import os
+from collections import OrderedDict
+
+from fwgen.helpers import ordered_dict_merge
 
 
 DEFAULT_CHAINS = {
@@ -11,7 +14,6 @@ DEFAULT_CHAINS = {
     'security': ['INPUT', 'FORWARD', 'OUTPUT']
 }
 
-
 class InvalidChain(Exception):
     pass
 
@@ -20,25 +22,57 @@ class RulesetError(Exception):
 
 class FwGen(object):
     def __init__(self, config):
-        self.config = config
         self._ip_families = ['ip', 'ip6']
-        etc = self._get_etc()
+
+        # Paths that do not start with / are relative to /etc, or /etc/netns/<namespace>
+        # if executed within a namespace.
+        defaults = OrderedDict()
+        defaults = {
+            'restore_files': {
+                'iptables': 'iptables.restore',
+                'ip6tables': 'ip6tables.restore',
+                'ipsets': 'ipsets.restore'
+            },
+            'cmds': {
+                'iptables_save': 'iptables-save',
+                'iptables_restore': 'iptables-restore',
+                'ip6tables_save': 'ip6tables-save',
+                'ip6tables_restore': 'ip6tables-restore',
+                'ipset': 'ipset',
+                'ip': 'ip'
+            }
+        }
+
+        self.config = ordered_dict_merge(config, defaults)
+        restore_files = self._get_restore_files()
         self._restore_file = {
-            'ip': '%s/iptables.restore' % etc,
-            'ip6': '%s/ip6tables.restore' % etc,
-            'ipset': '%s/ipsets.restore' % etc
+            'ip': restore_files['iptables'],
+            'ip6': restore_files['ip6tables'],
+            'ipset': restore_files['ipsets']
         }
         self._restore_cmd = {
-            'ip': ['iptables-restore'],
-            'ip6': ['ip6tables-restore'],
-            'ipset': ['ipset', 'restore']
+            'ip': [self.config['cmds']['iptables_restore']],
+            'ip6': [self.config['cmds']['ip6tables_restore']],
+            'ipset': [self.config['cmds']['ipset'], 'restore']
         }
         self._save_cmd = {
-            'ip': ['iptables-save'],
-            'ip6': ['ip6tables-save']
+            'ip': [self.config['cmds']['iptables_save']],
+            'ip6': [self.config['cmds']['ip6tables_save']]
         }
         self.zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
         self.variable_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
+
+    def _get_restore_files(self):
+        restore_files = {}
+        etc = self._get_etc()
+
+        for k, v in self.config['restore_files'].items():
+            if v.startswith('/'):
+                restore_files[k] = v
+            else:
+                restore_files[k] = '%s/%s' % (etc, v)
+
+        return restore_files
 
     def _get_etc(self):
         etc = '/etc'
@@ -50,9 +84,8 @@ class FwGen(object):
 
         return etc
 
-    @staticmethod
-    def _get_netns():
-        cmd = ['ip', 'netns', 'identify', str(os.getpid())]
+    def _get_netns(self):
+        cmd = [self.config['cmds']['ip'], 'netns', 'identify', str(os.getpid())]
         output = subprocess.check_output(cmd)
         return output.strip()
 

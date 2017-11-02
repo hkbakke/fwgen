@@ -7,6 +7,7 @@ from pkg_resources import resource_filename
 
 import yaml
 import fwgen
+from fwgen.helpers import ordered_dict_merge
 
 
 # Python 2.7 compatibility
@@ -31,19 +32,6 @@ def wait_for_input(message, timeout):
     finally:
         # Cancel alarm
         signal.alarm(0)
-
-def ordered_dict_merge(d1, d2):
-    """
-    Deep merge d1 into d2
-    """
-    for k, v in d1.items():
-        if isinstance(v, OrderedDict):
-            node = d2.setdefault(k, OrderedDict())
-            ordered_dict_merge(v, node)
-        else:
-            d2[k] = v
-
-    return d2
 
 def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
     class OrderedLoader(Loader):

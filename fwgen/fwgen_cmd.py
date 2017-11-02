@@ -97,8 +97,10 @@ def _main():
         sys.exit(3)
 
     fw = fwgen.FwGen(config)
+
     if args.with_reset:
         fw.reset()
+
     if args.no_confirm:
         fw.commit()
     else:

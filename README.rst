@@ -106,4 +106,17 @@ If ipsets in use causes issues with applying the new ruleset:
 
     fwgen --with-reset
 
+In addition to rules defined in the config file you can add/override rules from command line. Add `--log-level debug` to see the resulting complete config.
+
+::
+
+    fwgen --config-json '{"global": {"policy": {"filter": {"INPUT": "ACCEPT}}}}'
+
+
+For other functionality, see:
+
+::
+
+    fwgen --help
+
 .. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/config.yml.example

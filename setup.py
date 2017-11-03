@@ -95,7 +95,7 @@ setup(
         'fwgen': [
             'etc/defaults.yml',
             'etc/config.yml.example',
-            'sbin/restore-fw'],
+        ],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may

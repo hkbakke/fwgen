@@ -168,6 +168,8 @@ def _main():
             except (TimeoutExpired, KeyboardInterrupt):
                 logger.info('\nNo confirmation received. Rolling back...')
                 fw.rollback()
+
+        fw.write_restore_script()
     except CalledProcessError as e:
         logger.error(str(e))
         return 1

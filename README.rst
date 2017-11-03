@@ -78,11 +78,6 @@ To finish up you should do the following (replace python3 with python if python 
     chown -R root. /etc/fwgen
     chmod 600 /etc/fwgen/*.yml
 
-    # On Debian-based distros you should use restore-fw to ensure the
-    # firewall is activated on reboots and ifup
-    ln -s $(python3 -c 'import fwgen, os; print(os.path.dirname(fwgen.__file__))')/sbin/restore-fw \
-        /etc/network/if-pre-up.d/restore-fw
-
 Update ``/etc/fwgen/config.yml`` with your ruleset. Look at the `example configuration`_ for guidance.
 
 Usage

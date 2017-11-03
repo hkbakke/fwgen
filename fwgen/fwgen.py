@@ -43,6 +43,10 @@ class FwGen(object):
                 'ipset': 'ipset',
                 'ip': 'ip',
                 'conntrack': 'conntrack'
+            },
+            'restore_script': {
+                'manage': True,
+                'path': '/etc/network/if-pre-up.d/restore-fw'
             }
         }
 
@@ -227,7 +231,7 @@ class FwGen(object):
         """
         Avoid using `ipset save` in case there are other
         ipsets used on the system for other purposes. Also
-        this avoid storing now unused ipsets from previous
+        this avoids storing now unused ipsets from previous
         configurations.
         """
         with open(path, 'w') as f:
@@ -315,3 +319,33 @@ class FwGen(object):
 
         # Reset ipsets after the rules are removed to ensure ipsets are not in use
         self._apply_rules(self._output_ipsets(reset=True), 'ipset')
+
+    def write_restore_script(self):
+        """ Atomically updates the content and permissions of an executable file """
+        if self.config['restore_script']['manage']:
+            path = self.config['restore_script']['path']
+            tmp = '%s.tmp' % path
+        else:
+            LOGGER.debug('Restore script management is disabled. Skipping...')
+            return
+
+        with open(tmp, 'w') as f:
+            for item in self._get_restore_script():
+                f.write('%s\n' % item)
+
+        os.chmod(tmp, 0o755)
+        os.rename(tmp, path)
+
+    def _get_restore_script(self):
+        content = [
+            '#!/bin/sh',
+            '',
+            'IPSETS_RESTORE="%s"' % self._restore_file['ipset'],
+            'IPTABLES_RESTORE="%s"' % self._restore_file['ip'],
+            'IP6TABLES_RESTORE="%s"' % self._restore_file['ip6'],
+            '',
+            '[ -f ${IPSETS_RESTORE} ] && %s < "${IPSETS_RESTORE}"' % ' '.join(self._restore_cmd['ipset']),
+            '[ -f ${IPTABLES_RESTORE} ] && %s < "${IPTABLES_RESTORE}"' % ' '.join(self._restore_cmd['ip']),
+            '[ -f ${IP6TABLES_RESTORE} ] && %s < "${IP6TABLES_RESTORE}"' % ' '.join(self._restore_cmd['ip6']),
+        ]
+        return content

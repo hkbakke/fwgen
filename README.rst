@@ -110,7 +110,7 @@ In addition to rules defined in the config file you can add/override rules from 
 
 ::
 
-    fwgen --config-json '{"global": {"policy": {"filter": {"INPUT": "ACCEPT}}}}'
+    fwgen --config-json '{"global": {"policy": {"filter": {"INPUT": "ACCEPT"}}}}'
 
 
 For other functionality, see:

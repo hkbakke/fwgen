@@ -132,30 +132,24 @@ def _main():
         if args.with_reset:
             fw.reset()
 
+        if args.no_save:
+            logger.warning('Saving is disabled. The ruleset will not be persistent!')
+
         if args.no_confirm:
-            if args.no_save:
-                fw.apply(args.flush_connections)
-            else:
-                fw.apply(args.flush_connections)
+            fw.apply(args.flush_connections)
+            if not args.no_save:
                 fw.save()
         else:
             timeout = 30
             if args.timeout:
                 timeout = args.timeout
 
-            logger.info('\nRolling back in %d seconds if not confirmed', timeout)
+            logger.info('\n*** Rolling back in %d seconds if not confirmed ***', timeout)
             fw.apply(args.flush_connections)
-
-            if args.no_save:
-                message = ('\nThe ruleset has been applied successfully! '
-                           'Press \'Enter\' to confirm.')
-            else:
-                message = ('\nThe ruleset has been applied successfully! '
-                           'Press \'Enter\' to make the new ruleset persistent.')
+            message = ('\nThe ruleset has been applied! Press \'Enter\' to confirm.')
 
             try:
                 wait_for_input(message, timeout)
-
                 if not args.no_save:
                     fw.save()
             except (TimeoutExpired, KeyboardInterrupt):

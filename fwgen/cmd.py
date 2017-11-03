@@ -4,8 +4,8 @@ import sys
 import json
 import logging
 from collections import OrderedDict
-from pkg_resources import resource_filename
 from subprocess import CalledProcessError
+from pkg_resources import resource_filename
 
 import yaml
 import fwgen
@@ -143,14 +143,15 @@ def _main():
             if args.timeout:
                 timeout = args.timeout
 
-            logger.info('\nRolling back in %d seconds if not confirmed' % timeout)
+            logger.info('\nRolling back in %d seconds if not confirmed', timeout)
             fw.apply(args.flush_connections)
 
             if args.no_save:
-                message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to confirm.')
+                message = ('\nThe ruleset has been applied successfully! '
+                           'Press \'Enter\' to confirm.')
             else:
-                message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to make the '
-                           'new ruleset persistent.')
+                message = ('\nThe ruleset has been applied successfully! '
+                           'Press \'Enter\' to make the new ruleset persistent.')
 
             try:
                 wait_for_input(message, timeout)

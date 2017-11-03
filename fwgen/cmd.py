@@ -63,6 +63,7 @@ def _main():
                         help='Apply the ruleset but do not make it persistent')
     parser.add_argument('--flush-connections', action='store_true',
                         help='Flush all connections after applying ruleset')
+    parser.add_argument('--reset', action='store_true', help='Clear the ruleset')
     parser.add_argument(
         '--log-level',
         choices=[
@@ -128,15 +129,20 @@ def _main():
     #
     fw = fwgen.FwGen(config)
 
+    if args.no_save:
+        logger.warning('Saving is disabled. The ruleset will not be persistent!')
+
+    if args.reset:
+        logger.warning('Reset is enabled. The ruleset will be cleared!')
+
     try:
-        if args.with_reset:
-            fw.reset()
-
-        if args.no_save:
-            logger.warning('Saving is disabled. The ruleset will not be persistent!')
-
         if args.no_confirm:
-            fw.apply(args.flush_connections)
+            if args.reset or args.with_reset:
+                fw.reset()
+
+            if not args.reset:
+                fw.apply(args.flush_connections)
+
             if not args.no_save:
                 fw.save()
         else:
@@ -145,11 +151,18 @@ def _main():
                 timeout = args.timeout
 
             logger.info('\n*** Rolling back in %d seconds if not confirmed ***', timeout)
-            fw.apply(args.flush_connections)
+
+            if args.reset or args.with_reset:
+                fw.reset()
+
+            if not args.reset:
+                fw.apply(args.flush_connections)
+
             message = ('\nThe ruleset has been applied! Press \'Enter\' to confirm.')
 
             try:
                 wait_for_input(message, timeout)
+
                 if not args.no_save:
                     fw.save()
             except (TimeoutExpired, KeyboardInterrupt):

@@ -2,6 +2,7 @@ import argparse
 import signal
 import sys
 import json
+import logging
 from collections import OrderedDict
 from pkg_resources import resource_filename
 
@@ -9,6 +10,8 @@ import yaml
 import fwgen
 from fwgen.helpers import ordered_dict_merge
 
+
+LOGGER = logging.getLogger(__name__)
 
 # Python 2.7 compatibility
 try:
@@ -57,6 +60,20 @@ def _main():
                              'in use are preventing you from applying the new configuration.')
     parser.add_argument('--no-save', action='store_true',
                         help='Apply the ruleset but do not make it persistent')
+    parser.add_argument('--flush-connections', action='store_true',
+                        help='Flush all connections after applying ruleset')
+    parser.add_argument(
+        '--log-level',
+        choices=[
+            'critical',
+            'error',
+            'warning',
+            'info',
+            'debug'
+        ],
+        default='info',
+        help='Set log level for console output'
+    )
 
     mutex_group = parser.add_mutually_exclusive_group()
     mutex_group.add_argument('--timeout', metavar='SECONDS', type=int,
@@ -66,13 +83,11 @@ def _main():
 
     args = parser.parse_args()
 
-    defaults = resource_filename(__name__, 'etc/defaults.yml')
-    if args.defaults:
-        defaults = args.defaults
-
-    user_config = '/etc/fwgen/config.yml'
-    if args.config:
-        user_config = args.config
+    # Set up logging
+    logger = logging.getLogger()
+    logger.setLevel(args.log_level.upper())
+    console = logging.StreamHandler()
+    logger.addHandler(console)
 
     #
     # Configuration merge order. Each merge overrides the previous one if a parameter
@@ -82,18 +97,30 @@ def _main():
     #   2. config from config file
     #   3. config provided at runtime via --config-json
     #
+    defaults = resource_filename(__name__, 'etc/defaults.yml')
+    if args.defaults:
+        defaults = args.defaults
+        logger.debug('Using defaults file %s', defaults)
+
+    user_config = '/etc/fwgen/config.yml'
+    if args.config:
+        user_config = args.config
+        logger.debug('Using config file %s', user_config)
+
     try:
         with open(defaults, 'r') as f:
             config = yaml_load_ordered(f)
         with open(user_config, 'r') as f:
             config = ordered_dict_merge(yaml_load_ordered(f), config)
     except FileNotFoundError as e:
-        print('ERROR: %s' % e)
+        logger.error(str(e))
         sys.exit(3)
 
     if args.config_json:
         json_config = json.loads(args.config_json, object_pairs_hook=OrderedDict)
         config = ordered_dict_merge(json_config, config)
+
+    logger.debug('Resulting config: %s', json.dumps(config, indent=2))
 
     #
     # Start doing actual firewall stuff
@@ -105,22 +132,23 @@ def _main():
 
     if args.no_confirm:
         if args.no_save:
-            fw.apply()
+            fw.apply(args.flush_connections)
         else:
-            fw.commit()
+            fw.apply(args.flush_connections)
+            fw.save()
     else:
         timeout = 30
         if args.timeout:
             timeout = args.timeout
 
-        print('\nRolling back in %d seconds if not confirmed.\n' % timeout)
-        fw.apply()
+        logger.info('\nRolling back in %d seconds if not confirmed' % timeout)
+        fw.apply(args.flush_connections)
 
         if args.no_save:
-            message = ('The ruleset has been applied successfully! Press \'Enter\' to confirm.\n')
+            message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to confirm.')
         else:
-            message = ('The ruleset has been applied successfully! Press \'Enter\' to make the '
-                       'new ruleset persistent.\n')
+            message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to make the '
+                       'new ruleset persistent.')
 
         try:
             wait_for_input(message, timeout)
@@ -128,15 +156,15 @@ def _main():
             if not args.no_save:
                 fw.save()
         except (TimeoutExpired, KeyboardInterrupt):
-            print('No confirmation received. Rolling back...\n')
+            logger.info('\nNo confirmation received. Rolling back...')
             fw.rollback()
 
 def main():
     try:
         sys.exit(_main())
     except Exception as e:
-        print('ERROR: %s' % e)
+        print(str(e))
         sys.exit(1)
     except KeyboardInterrupt:
-        print('ERROR: Aborted by user!')
+        print('Aborted by user!')
         sys.exit(130)

@@ -31,6 +31,7 @@ Requirements
 
 -  PyYAML
 -  ipset
+-  conntrack
 
 Installation
 ============

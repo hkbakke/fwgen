@@ -1,11 +1,13 @@
 import re
 import subprocess
 import os
+import logging
 from collections import OrderedDict
 
 from fwgen.helpers import ordered_dict_merge
 
 
+LOGGER = logging.getLogger(__name__)
 DEFAULT_CHAINS = {
     'filter': ['INPUT', 'FORWARD', 'OUTPUT'],
     'nat': ['PREROUTING', 'INPUT', 'OUTPUT', 'POSTROUTING'],
@@ -39,7 +41,8 @@ class FwGen(object):
                 'ip6tables_save': 'ip6tables-save',
                 'ip6tables_restore': 'ip6tables-restore',
                 'ipset': 'ipset',
-                'ip': 'ip'
+                'ip': 'ip',
+                'conntrack': 'conntrack'
             }
         }
 
@@ -251,13 +254,20 @@ class FwGen(object):
         with open(path, 'rb') as f:
             subprocess.check_call(self._restore_cmd[rule_type], stdin=f)
 
+    def flush_connections(self):
+        LOGGER.info('Flushing connection tracking table...')
+        subprocess.check_call(
+            [self.config['cmds']['conntrack'], '-F'],
+            stderr=subprocess.DEVNULL
+        )
+
     def save(self):
         for family in self._ip_families:
             self._save_rules(self._restore_file[family], family)
 
         self._save_ipsets(self._restore_file['ipset'])
 
-    def apply(self):
+    def apply(self, flush_connections=False):
         # Apply ipsets first to ensure they exist when the rules are applied
         self._apply_rules(self._output_ipsets(), 'ipset')
 
@@ -271,9 +281,8 @@ class FwGen(object):
         for family in self._ip_families:
             self._apply_rules(self._output_rules(rules), family)
 
-    def commit(self):
-        self.apply()
-        self.save()
+        if flush_connections:
+            self.flush_connections()
 
     def rollback(self):
         for family in self._ip_families:

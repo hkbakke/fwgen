@@ -5,6 +5,7 @@ import json
 import logging
 from collections import OrderedDict
 from pkg_resources import resource_filename
+from subprocess import CalledProcessError
 
 import yaml
 import fwgen
@@ -127,44 +128,51 @@ def _main():
     #
     fw = fwgen.FwGen(config)
 
-    if args.with_reset:
-        fw.reset()
+    try:
+        if args.with_reset:
+            fw.reset()
 
-    if args.no_confirm:
-        if args.no_save:
-            fw.apply(args.flush_connections)
-        else:
-            fw.apply(args.flush_connections)
-            fw.save()
-    else:
-        timeout = 30
-        if args.timeout:
-            timeout = args.timeout
-
-        logger.info('\nRolling back in %d seconds if not confirmed' % timeout)
-        fw.apply(args.flush_connections)
-
-        if args.no_save:
-            message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to confirm.')
-        else:
-            message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to make the '
-                       'new ruleset persistent.')
-
-        try:
-            wait_for_input(message, timeout)
-
-            if not args.no_save:
+        if args.no_confirm:
+            if args.no_save:
+                fw.apply(args.flush_connections)
+            else:
+                fw.apply(args.flush_connections)
                 fw.save()
-        except (TimeoutExpired, KeyboardInterrupt):
-            logger.info('\nNo confirmation received. Rolling back...')
-            fw.rollback()
+        else:
+            timeout = 30
+            if args.timeout:
+                timeout = args.timeout
+
+            logger.info('\nRolling back in %d seconds if not confirmed' % timeout)
+            fw.apply(args.flush_connections)
+
+            if args.no_save:
+                message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to confirm.')
+            else:
+                message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to make the '
+                           'new ruleset persistent.')
+
+            try:
+                wait_for_input(message, timeout)
+
+                if not args.no_save:
+                    fw.save()
+            except (TimeoutExpired, KeyboardInterrupt):
+                logger.info('\nNo confirmation received. Rolling back...')
+                fw.rollback()
+    except CalledProcessError as e:
+        logger.error(str(e))
+        return 1
+    except fwgen.RulesetError as e:
+        logger.error(str(e))
+        return 1
+    except fwgen.InvalidChain as e:
+        logger.error(str(e))
+        return 1
 
 def main():
     try:
         sys.exit(_main())
-    except Exception as e:
-        print(str(e))
-        sys.exit(1)
     except KeyboardInterrupt:
         print('Aborted by user!')
         sys.exit(130)

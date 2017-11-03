@@ -31,7 +31,7 @@ Requirements
 
 -  PyYAML
 -  ipset
--  conntrack
+-  conntrack (optional)
 
 Installation
 ============
@@ -60,7 +60,7 @@ Installing from source
     python3 setup.py clean --all bdist_wheel --universal
     deactivate  # Unless you only want to install it in your venv
 
-    apt install ipset python3-yaml python3-pip
+    apt install ipset conntrack python3-yaml python3-pip
     pip3 install dist/<build>.whl
 
 Prepare configuration file

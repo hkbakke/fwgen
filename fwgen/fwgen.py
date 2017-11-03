@@ -180,7 +180,7 @@ class FwGen(object):
                     elif chain in ['OUTPUT', 'POSTROUTING']:
                         yield (table, '-A %s -o %%{%s} -j %s' % (chain, zone, dispatcher_chain))
                     else:
-                        raise InvalidChain('%s is not a valid default chain' % chain)
+                        raise InvalidChain('%s is not a valid built-in chain' % chain)
 
     def _expand_zones(self, rule):
         match = re.search(self.zone_pattern, rule)
@@ -256,10 +256,15 @@ class FwGen(object):
 
     def flush_connections(self):
         LOGGER.info('Flushing connection tracking table...')
-        subprocess.check_call(
-            [self.config['cmds']['conntrack'], '-F'],
-            stderr=subprocess.DEVNULL
-        )
+        try:
+            subprocess.check_call(
+                [self.config['cmds']['conntrack'], '-F'],
+                stderr=subprocess.DEVNULL
+            )
+        except FileNotFoundError as e:
+            LOGGER.error('%s. Is conntrack installed? Continuing without '
+                         'flushing connection tracking table...', str(e))
+            return
 
     def save(self):
         for family in self._ip_families:

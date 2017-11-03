@@ -14,6 +14,7 @@
 #  ip6tables_restore: ip6tables-restore
 #  ipset: ipset
 #  ip: ip
+#  conntrack: conntrack
 
 # Rules are applied both to iptables and ip6tables. Use '-4' or '-6' in the rule
 # entry to indicate family if rule are family specific. This is documented in

@@ -4,7 +4,7 @@ import os
 import logging
 from collections import OrderedDict
 
-from fwgen.helpers import ordered_dict_merge
+from fwgen.helpers import ordered_dict_merge, get_etc
 
 
 LOGGER = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class FwGen(object):
 
     def _get_restore_files(self):
         restore_files = {}
-        etc = self._get_etc()
+        etc = get_etc()
 
         for k, v in self.config['restore_files'].items():
             if v.startswith('/'):
@@ -80,21 +80,6 @@ class FwGen(object):
                 restore_files[k] = '%s/%s' % (etc, v)
 
         return restore_files
-
-    def _get_etc(self):
-        etc = '/etc'
-        netns = self._get_netns()
-
-        if netns:
-            etc = '/etc/netns/%s' % netns
-            os.makedirs(etc, exist_ok=True)
-
-        return etc
-
-    def _get_netns(self):
-        cmd = [self.config['cmds']['ip'], 'netns', 'identify', str(os.getpid())]
-        output = subprocess.check_output(cmd)
-        return output.strip()
 
     def _output_ipsets(self, reset=False):
         if reset:
@@ -234,11 +219,21 @@ class FwGen(object):
         this avoids storing now unused ipsets from previous
         configurations.
         """
+        try:
+            os.makedirs(os.path.dirname(path))
+        except FileExistsError:
+            pass
+
         with open(path, 'w') as f:
             for item in self._output_ipsets():
                 f.write('%s\n' % item)
 
     def _save_rules(self, path, family):
+        try:
+            os.makedirs(os.path.dirname(path))
+        except FileExistsError:
+            pass
+
         with open(path, 'wb') as f:
             subprocess.check_call(self._save_cmd[family], stdout=f)
 

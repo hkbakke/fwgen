@@ -9,10 +9,8 @@ from pkg_resources import resource_filename
 
 import yaml
 import fwgen
-from fwgen.helpers import ordered_dict_merge
+from fwgen.helpers import ordered_dict_merge, create_config_dir
 
-
-LOGGER = logging.getLogger(__name__)
 
 # Python 2.7 compatibility
 try:
@@ -53,8 +51,13 @@ def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict)
 
 def _main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', metavar='PATH', help='Override path to config file')
-    parser.add_argument('--defaults', metavar='PATH', help='Override path to defaults file')
+    parser.add_argument('--create-config-dir', metavar='PATH', nargs='?',
+                        const='__default__', help='Creates initial config dir')
+    parser.add_argument('--config', metavar='PATH', default='/etc/fwgen/config.yml',
+                        help='Override path to config file')
+    parser.add_argument('--defaults', metavar='PATH',
+                        default=resource_filename(__name__, 'etc/defaults.yml'),
+                        help='Override path to defaults file')
     parser.add_argument('--config-json', metavar='JSON', help='JSON formatted config')
     parser.add_argument('--with-reset', action='store_true',
                         help='Clear the firewall before reapplying. Recommended only if ipsets '
@@ -91,6 +94,15 @@ def _main():
     console = logging.StreamHandler()
     logger.addHandler(console)
 
+    if args.create_config_dir:
+        if args.create_config_dir == '__default__':
+            config_dir = None
+        else:
+            config_dir = args.create_config_dir
+
+        create_config_dir(config_dir)
+        return 0
+
     #
     # Configuration merge order. Each merge overrides the previous one if a parameter
     # is provided in both configurations.
@@ -99,20 +111,13 @@ def _main():
     #   2. config from config file
     #   3. config provided at runtime via --config-json
     #
-    defaults = resource_filename(__name__, 'etc/defaults.yml')
-    if args.defaults:
-        defaults = args.defaults
-        logger.debug('Using defaults file %s', defaults)
-
-    user_config = '/etc/fwgen/config.yml'
-    if args.config:
-        user_config = args.config
-        logger.debug('Using config file %s', user_config)
-
     try:
-        with open(defaults, 'r') as f:
+        logger.debug('Using defaults file %s', args.defaults)
+        with open(args.defaults, 'r') as f:
             config = yaml_load_ordered(f)
-        with open(user_config, 'r') as f:
+
+        logger.debug('Using config file %s', args.config)
+        with open(args.config, 'r') as f:
             config = ordered_dict_merge(yaml_load_ordered(f), config)
     except FileNotFoundError as e:
         logger.error(str(e))

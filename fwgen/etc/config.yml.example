@@ -12,7 +12,6 @@
 #  ip6tables_save: ip6tables-save
 #  ip6tables_restore: ip6tables-restore
 #  ipset: ipset
-#  ip: ip
 #  conntrack: conntrack
 
 # Change or disable fwgens built-in firewall restoration on reboots and ifup

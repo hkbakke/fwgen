@@ -120,7 +120,7 @@ def _main():
         json_config = json.loads(args.config_json, object_pairs_hook=OrderedDict)
         config = ordered_dict_merge(json_config, config)
 
-    logger.debug('Resulting config: %s', json.dumps(config, indent=2))
+    logger.debug('Resulting config: %s', json.dumps(config, indent=4))
 
     #
     # Start doing actual firewall stuff

@@ -41,7 +41,6 @@ class FwGen(object):
                 'ip6tables_save': 'ip6tables-save',
                 'ip6tables_restore': 'ip6tables-restore',
                 'ipset': 'ipset',
-                'ip': 'ip',
                 'conntrack': 'conntrack'
             },
             'restore_script': {

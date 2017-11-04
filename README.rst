@@ -38,28 +38,25 @@ Installation
 
 ::
 
-    # Python 3.x (recommended)
+    # Python 3.x
     apt install ipset python3-yaml python3-pip
     pip3 install fwgen
-
-    # Python 2.x
-    apt install ipset python-yaml python-pip
-    pip install fwgen
 
 Installing from source
 ======================
 
 ::
 
-    apt install python3-venv
+    apt install python3-pip python3-venv
     git clone https://github.com/hkbakke/fwgen
     cd fwgen
     python3 -m venv venv
     . ./venv/bin/activate
     pip3 install wheel
-    python3 setup.py clean --all bdist_wheel --universal
+    python3 setup.py clean --all bdist_wheel
     deactivate  # Unless you only want to install it in your venv
 
+    # On you target host
     apt install ipset conntrack python3-yaml python3-pip
     pip3 install dist/<build>.whl
 

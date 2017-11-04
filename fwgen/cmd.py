@@ -9,14 +9,7 @@ from pkg_resources import resource_filename
 
 import yaml
 import fwgen
-from fwgen.helpers import ordered_dict_merge, create_config_dir
-
-
-# Python 2.7 compatibility
-try:
-    input = raw_input
-except NameError:
-    pass
+from .helpers import ordered_dict_merge, create_config_dir
 
 
 class TimeoutExpired(Exception):

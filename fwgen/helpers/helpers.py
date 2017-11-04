@@ -41,12 +41,8 @@ def create_config_dir(path):
 
     LOGGER.info("Ensuring '%s' exists...", path)
 
-    try:
-        os.makedirs(path)
-    except FileExistsError:
-        pass
-
-    example_config = resource_filename(__name__, 'etc/config.yml.example')
+    os.makedirs(path, exist_ok=True)
+    example_config = resource_filename('fwgen', 'etc/config.yml.example')
     config = os.path.join(path, 'config.yml')
 
     if not os.path.isfile(config):

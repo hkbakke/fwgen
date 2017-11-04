@@ -4,7 +4,7 @@ import os
 import logging
 from collections import OrderedDict
 
-from fwgen.helpers import ordered_dict_merge, get_etc
+from .helpers import ordered_dict_merge, get_etc
 
 
 LOGGER = logging.getLogger(__name__)
@@ -218,20 +218,14 @@ class FwGen(object):
         this avoids storing now unused ipsets from previous
         configurations.
         """
-        try:
-            os.makedirs(os.path.dirname(path))
-        except FileExistsError:
-            pass
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
         with open(path, 'w') as f:
             for item in self._output_ipsets():
                 f.write('%s\n' % item)
 
     def _save_rules(self, path, family):
-        try:
-            os.makedirs(os.path.dirname(path))
-        except FileExistsError:
-            pass
+        os.makedirs(os.path.dirname(path), exist_ok=True)
 
         with open(path, 'wb') as f:
             subprocess.check_call(self._save_cmd[family], stdout=f)

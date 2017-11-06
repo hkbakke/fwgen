@@ -194,4 +194,22 @@
 #        OUTPUT:
 #          - -j ACCEPT
 
+# ---- initial config start ----
+#
+# Please uncomment/remove this block after you have configured your firewall.
+# This is just a safety net to prevent you from full connectivity loss if fwgen
+# is executed without being configured after '--create-config-dir' has been run
+#
+
+global:
+  rules:
+    pre_zone:
+      filter:
+        INPUT:
+          - -j ACCEPT
+        OUTPUT:
+          - -j ACCEPT
+
+# ---- initial config end ----
+
 # vim: ft=yaml

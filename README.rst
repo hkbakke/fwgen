@@ -105,7 +105,7 @@ To temporarily clear the running ruleset without overwriting the saved persisten
 ::
 
     fwgen --no-save --reset
-    
+
 For troubleshooting
 
 ::

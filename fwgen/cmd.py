@@ -45,7 +45,7 @@ def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict)
 def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--create-config-dir', metavar='PATH', nargs='?',
-                        const='__default__', help='Creates initial config dir')
+                        const='__default__', help='Create initial config dir')
     parser.add_argument('--config', metavar='PATH', default='/etc/fwgen/config.yml',
                         help='Override path to config file')
     parser.add_argument('--defaults', metavar='PATH',
@@ -108,13 +108,24 @@ def _main():
         logger.debug('Using defaults file %s', args.defaults)
         with open(args.defaults, 'r') as f:
             config = yaml_load_ordered(f)
-
-        logger.debug('Using config file %s', args.config)
-        with open(args.config, 'r') as f:
-            config = ordered_dict_merge(yaml_load_ordered(f), config)
     except FileNotFoundError as e:
         logger.error(str(e))
         sys.exit(3)
+
+    try:
+        logger.debug('Using config file %s', args.config)
+        with open(args.config, 'r') as f:
+            user_config = yaml_load_ordered(f)
+
+            if user_config:
+                config = ordered_dict_merge(user_config, config)
+    except FileNotFoundError as e:
+        if args.config_json:
+            logger.warning("'%s' not found. You will loose connectivity if your json config "
+                           "is incomplete!", args.config)
+        else:
+            logger.error(str(e))
+            sys.exit(3)
 
     if args.config_json:
         json_config = json.loads(args.config_json, object_pairs_hook=OrderedDict)

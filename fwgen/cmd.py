@@ -105,7 +105,7 @@ def _main():
     #   3. config provided at runtime via --config-json
     #
     try:
-        logger.debug('Using defaults file %s', args.defaults)
+        logger.debug("Using defaults file '%s'", args.defaults)
         with open(args.defaults, 'r') as f:
             config = yaml_load_ordered(f)
     except FileNotFoundError as e:
@@ -113,7 +113,7 @@ def _main():
         sys.exit(3)
 
     try:
-        logger.debug('Using config file %s', args.config)
+        logger.debug("Using config file '%s'", args.config)
         with open(args.config, 'r') as f:
             user_config = yaml_load_ordered(f)
 

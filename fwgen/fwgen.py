@@ -31,9 +31,9 @@ class FwGen(object):
         defaults = OrderedDict()
         defaults = {
             'restore_files': {
-                'iptables': 'iptables.restore',
-                'ip6tables': 'ip6tables.restore',
-                'ipsets': 'ipsets.restore'
+                'iptables': 'fwgen/iptables.restore',
+                'ip6tables': 'fwgen/ip6tables.restore',
+                'ipsets': 'fwgen/ipsets.restore'
             },
             'cmds': {
                 'iptables_save': 'iptables-save',
@@ -219,16 +219,24 @@ class FwGen(object):
         configurations.
         """
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = '%s.tmp' % path
 
-        with open(path, 'w') as f:
+        with open(tmp, 'w') as f:
             for item in self._output_ipsets():
                 f.write('%s\n' % item)
 
+        os.chmod(tmp, 0o600)
+        os.rename(tmp, path)
+
     def _save_rules(self, path, family):
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = '%s.tmp' % path
 
-        with open(path, 'wb') as f:
+        with open(tmp, 'wb') as f:
             subprocess.check_call(self._save_cmd[family], stdout=f)
+
+        os.chmod(tmp, 0o600)
+        os.rename(tmp, path)
 
     def _apply_rules(self, rules, rule_type):
         data = ('%s\n' % '\n'.join(rules)).encode('utf-8')

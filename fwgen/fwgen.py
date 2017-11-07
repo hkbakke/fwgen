@@ -328,12 +328,12 @@ class FwGen(object):
         content = [
             '#!/bin/sh',
             '',
-            'IPSETS_RESTORE="%s"' % self._restore_file['ipset'],
-            'IPTABLES_RESTORE="%s"' % self._restore_file['ip'],
-            'IP6TABLES_RESTORE="%s"' % self._restore_file['ip6'],
+            'IPSETS="%s"' % self._restore_file['ipset'],
+            'IP_FW="%s"' % self._restore_file['ip'],
+            'IP6_FW="%s"' % self._restore_file['ip6'],
             '',
-            '[ -f ${IPSETS_RESTORE} ] && %s < "${IPSETS_RESTORE}"' % ' '.join(self._restore_cmd['ipset']),
-            '[ -f ${IPTABLES_RESTORE} ] && %s < "${IPTABLES_RESTORE}"' % ' '.join(self._restore_cmd['ip']),
-            '[ -f ${IP6TABLES_RESTORE} ] && %s < "${IP6TABLES_RESTORE}"' % ' '.join(self._restore_cmd['ip6']),
+            '[ -f "${IPSETS}" ] && "%s" restore < "${IPSETS}"' % self.config['cmds']['ipset'],
+            '[ -f "${IP_FW}" ] && "%s" < "${IP_FW}"' % self.config['cmds']['iptables_restore'],
+            '[ -f "${IP6_FW}" ] && "%s" < "${IP6_FW}"' % self.config['cmds']['ip6tables_restore'],
         ]
         return content

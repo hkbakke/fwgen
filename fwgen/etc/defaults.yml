@@ -13,6 +13,15 @@ global:
       CUSTOM_REJECT:
         - -p tcp -j REJECT --reject-with tcp-reset
         - -j REJECT
+      LOG_ACCEPT:
+        - '-j LOG --log-level info --log-prefix "FIREWALL->ACCEPT: "'
+        - -j ACCEPT
+      LOG_DROP:
+        - '-j LOG --log-level info --log-prefix "FIREWALL->DROP: "'
+        - -j DROP
+      LOG_REJECT:
+        - '-j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
+        - -j CUSTOM_REJECT
   rules:
     default:
       filter:

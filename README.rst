@@ -29,9 +29,10 @@ Advantages of using fwgen:
 Requirements
 ============
 
--  PyYAML
--  ipset
--  conntrack (only if you want to flush connections)
+- Python 3 (only tested on 3.4 and later, but might work with earlier versions)
+- PyYAML
+- ipset
+- conntrack (only if you want to flush connections)
 
 Installation
 ============

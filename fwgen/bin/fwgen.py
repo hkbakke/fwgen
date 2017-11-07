@@ -8,8 +8,8 @@ from subprocess import CalledProcessError
 from pkg_resources import resource_filename
 
 import yaml
-import fwgen
-from .helpers import ordered_dict_merge, create_config_dir
+from fwgen import fwgen
+from fwgen.helpers import ordered_dict_merge, create_config_dir
 
 
 class TimeoutExpired(Exception):
@@ -49,7 +49,7 @@ def _main():
     parser.add_argument('--config', metavar='PATH', default='/etc/fwgen/config.yml',
                         help='Override path to config file')
     parser.add_argument('--defaults', metavar='PATH',
-                        default=resource_filename(__name__, 'etc/defaults.yml'),
+                        default=resource_filename('fwgen', 'etc/defaults.yml'),
                         help='Override path to defaults file')
     parser.add_argument('--config-json', metavar='JSON', help='JSON formatted config')
     parser.add_argument('--with-reset', action='store_true',

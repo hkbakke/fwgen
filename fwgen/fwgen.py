@@ -4,7 +4,7 @@ import os
 import logging
 from collections import OrderedDict
 
-from .helpers import ordered_dict_merge, get_etc
+from fwgen.helpers import ordered_dict_merge, get_etc
 
 
 LOGGER = logging.getLogger(__name__)

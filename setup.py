@@ -108,7 +108,7 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'fwgen=fwgen.cmd:main',
+            'fwgen=fwgen.bin.fwgen:main',
         ],
     },
 )

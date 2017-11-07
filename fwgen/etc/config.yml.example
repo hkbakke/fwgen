@@ -1,9 +1,9 @@
 # Paths that do not start with / are relative to /etc, or /etc/netns/<namespace>
 # if executed within a namespace.
 #restore_files:
-#  iptables: fwgen/iptables.restore
-#  ip6tables: fwgen/ip6tables.restore
-#  ipsets: fwgen/ipsets.restore
+#  iptables: fwgen/rules/iptables.restore
+#  ip6tables: fwgen/rules/ip6tables.restore
+#  ipsets: fwgen/rules/ipsets.restore
 
 # You can override the paths to the commands used in fwgen
 #cmds:

@@ -1,8 +1,8 @@
 import re
 import subprocess
-import os
 import logging
 from collections import OrderedDict
+from pathlib import Path
 
 from fwgen.helpers import ordered_dict_merge, get_etc
 
@@ -31,9 +31,9 @@ class FwGen(object):
         defaults = OrderedDict()
         defaults = {
             'restore_files': {
-                'iptables': 'fwgen/iptables.restore',
-                'ip6tables': 'fwgen/ip6tables.restore',
-                'ipsets': 'fwgen/ipsets.restore'
+                'iptables': 'fwgen/rules/iptables.restore',
+                'ip6tables': 'fwgen/rules/ip6tables.restore',
+                'ipsets': 'fwgen/rules/ipsets.restore'
             },
             'cmds': {
                 'iptables_save': 'iptables-save',
@@ -52,9 +52,9 @@ class FwGen(object):
         self.config = ordered_dict_merge(config, defaults)
         restore_files = self._get_restore_files()
         self._restore_file = {
-            'ip': restore_files['iptables'],
-            'ip6': restore_files['ip6tables'],
-            'ipset': restore_files['ipsets']
+            'ip': Path(restore_files['iptables']),
+            'ip6': Path(restore_files['ip6tables']),
+            'ipset': Path(restore_files['ipsets'])
         }
         self._restore_cmd = {
             'ip': [self.config['cmds']['iptables_restore']],
@@ -63,7 +63,8 @@ class FwGen(object):
         }
         self._save_cmd = {
             'ip': [self.config['cmds']['iptables_save']],
-            'ip6': [self.config['cmds']['ip6tables_save']]
+            'ip6': [self.config['cmds']['ip6tables_save']],
+            'ipset': [self.config['cmds']['ipset'], 'save']
         }
         self.zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
         self.variable_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
@@ -76,7 +77,7 @@ class FwGen(object):
             if v.startswith('/'):
                 restore_files[k] = v
             else:
-                restore_files[k] = '%s/%s' % (etc, v)
+                restore_files[k] = etc / v
 
         return restore_files
 
@@ -218,25 +219,33 @@ class FwGen(object):
         this avoids storing now unused ipsets from previous
         configurations.
         """
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = '%s.tmp' % path
+        LOGGER.debug("Saving ipsets to '%s'", path)
+        try:
+            path.parent.mkdir(parents=True)
+        except FileExistsError:
+            pass
+        tmp = path.with_suffix('.tmp')
 
-        with open(tmp, 'w') as f:
+        with tmp.open('w') as f:
             for item in self._output_ipsets():
                 f.write('%s\n' % item)
 
-        os.chmod(tmp, 0o600)
-        os.rename(tmp, path)
+        tmp.chmod(0o600)
+        tmp.rename(path)
 
-    def _save_rules(self, path, family):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = '%s.tmp' % path
+    def _save_rules(self, path, rule_type):
+        LOGGER.debug("Saving %s rules to '%s'", rule_type, path)
+        try:
+            path.parent.mkdir(parents=True)
+        except FileExistsError:
+            pass
+        tmp = path.with_suffix('.tmp')
 
-        with open(tmp, 'wb') as f:
-            subprocess.check_call(self._save_cmd[family], stdout=f)
+        with tmp.open('wb') as f:
+            subprocess.check_call(self._save_cmd[rule_type], stdout=f)
 
-        os.chmod(tmp, 0o600)
-        os.rename(tmp, path)
+        tmp.chmod(0o600)
+        tmp.rename(path)
 
     def _apply_rules(self, rules, rule_type):
         data = ('%s\n' % '\n'.join(rules)).encode('utf-8')
@@ -251,7 +260,7 @@ class FwGen(object):
             raise RulesetError(stderr.decode('utf-8'))
 
     def _restore_rules(self, path, rule_type):
-        with open(path, 'rb') as f:
+        with path.open('rb') as f:
             subprocess.check_call(self._restore_cmd[rule_type], stdin=f)
 
     def flush_connections(self):
@@ -266,11 +275,27 @@ class FwGen(object):
                          'flushing connection tracking table...', str(e))
             return
 
-    def save(self):
-        for family in self._ip_families:
-            self._save_rules(self._restore_file[family], family)
+    def save(self, external_ipsets=False, ip_restore=None, ip6_restore=None, ipsets_restore=None):
+        ip_restore = ip_restore or self._restore_file['ip']
+        ip6_restore = ip6_restore or self._restore_file['ip6']
+        ipsets_restore = ipsets_restore or self._restore_file['ipset']
 
-        self._save_ipsets(self._restore_file['ipset'])
+        self._save_rules(ip_restore, 'ip')
+        self._save_rules(ip6_restore, 'ip6')
+
+        if external_ipsets:
+            self._save_rules(ipsets_restore, 'ipset')
+        else:
+            self._save_ipsets(ipsets_restore)
+
+    def restore(self, ip_restore=None, ip6_restore=None, ipsets_restore=None):
+        ip_restore = ip_restore or self._restore_file['ip']
+        ip6_restore = ip6_restore or self._restore_file['ip6']
+        ipsets_restore = ipsets_restore or self._restore_file['ipset']
+
+        self._restore_rules(ip_restore, 'ip')
+        self._restore_rules(ip6_restore, 'ip6')
+        self._restore_rules(ipsets_restore, 'ipset')
 
     def apply(self, flush_connections=False):
         # Apply ipsets first to ensure they exist when the rules are applied
@@ -288,18 +313,6 @@ class FwGen(object):
 
         if flush_connections:
             self.flush_connections()
-
-    def rollback(self):
-        for family in self._ip_families:
-            if os.path.exists(self._restore_file[family]):
-                self._restore_rules(self._restore_file[family], family)
-            else:
-                self.reset(family)
-
-        if os.path.exists(self._restore_file['ipset']):
-            self._restore_rules(self._restore_file['ipset'], 'ipset')
-        else:
-            self._apply_rules(self._output_ipsets(reset=True), 'ipset')
 
     def reset(self, family=None):
         families = self._ip_families
@@ -319,18 +332,18 @@ class FwGen(object):
     def write_restore_script(self):
         """ Atomically updates the content and permissions of an executable file """
         if self.config['restore_script']['manage']:
-            path = self.config['restore_script']['path']
-            tmp = '%s.tmp' % path
+            path = Path(self.config['restore_script']['path'])
+            tmp = path.with_suffix('.tmp')
         else:
             LOGGER.debug('Restore script management is disabled. Skipping...')
             return
 
-        with open(tmp, 'w') as f:
+        with tmp.open('w') as f:
             for item in self._get_restore_script():
                 f.write('%s\n' % item)
 
-        os.chmod(tmp, 0o755)
-        os.rename(tmp, path)
+        tmp.chmod(0o755)
+        tmp.rename(path)
 
     def _get_restore_script(self):
         content = [

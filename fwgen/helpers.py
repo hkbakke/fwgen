@@ -4,6 +4,7 @@ import logging
 from shutil import copyfile
 from collections import OrderedDict
 from pkg_resources import resource_filename
+from pathlib import Path
 
 
 LOGGER = logging.getLogger(__name__)
@@ -23,11 +24,11 @@ def ordered_dict_merge(d1, d2):
     return d2
 
 def get_etc():
-    etc = '/etc'
+    etc = Path('/etc')
     netns = get_netns()
 
     if netns:
-        etc = '/etc/netns/%s' % netns
+        etc = Path('/etc/netns') / netns
 
     return etc
 
@@ -37,19 +38,22 @@ def get_netns():
 
 def create_config_dir(path):
     if path is None:
-        path = os.path.join(get_etc(), 'fwgen')
+        path = Path(get_etc()) / 'fwgen'
 
     LOGGER.info("Ensuring '%s' exists...", path)
 
-    os.makedirs(path, exist_ok=True)
-    example_config = resource_filename('fwgen', 'etc/config.yml.example')
-    config = os.path.join(path, 'config.yml')
+    try:
+        path.mkdir(parents=True)
+    except FileExistsError:
+        pass
+    example_config = Path(resource_filename('fwgen', 'etc/config.yml.example'))
+    config = path / 'config.yml'
 
-    if not os.path.isfile(config):
+    if not config.is_file():
         LOGGER.info("Config file does not exist. Adding empty example config.\n"
                     "Please edit '%s' before you run fwgen. The default policy is to drop all new "
                     "sessions!", config)
-        copyfile(example_config, config)
+        copyfile(str(example_config), str(config))
 
     LOGGER.info("Setting permissions on '%s'", config)
-    os.chmod(config, 0o600)
+    config.chmod(0o600)

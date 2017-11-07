@@ -1,7 +1,7 @@
 import pytest
 from collections import OrderedDict
 
-import fwgen
+from fwgen import fwgen
 
 
 class OrderedDefaultDict(OrderedDict):

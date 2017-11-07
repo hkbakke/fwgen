@@ -6,6 +6,8 @@ import logging
 from collections import OrderedDict
 from subprocess import CalledProcessError
 from pkg_resources import resource_filename
+from pathlib import Path
+from tempfile import mkstemp
 
 import yaml
 from fwgen import fwgen
@@ -110,7 +112,7 @@ def _main():
             config = yaml_load_ordered(f) or {}
     except FileNotFoundError as e:
         logger.error(str(e))
-        sys.exit(3)
+        return 3
 
     try:
         logger.debug("Using config file '%s'", args.config)
@@ -123,7 +125,7 @@ def _main():
                            "is incomplete!", args.config)
         else:
             logger.error(str(e))
-            sys.exit(3)
+            return 3
 
     if args.config_json:
         json_config = json.loads(args.config_json, object_pairs_hook=OrderedDict)
@@ -143,40 +145,46 @@ def _main():
         logger.warning('Reset is enabled. The ruleset will be cleared!')
 
     try:
-        if args.no_confirm:
-            if args.reset or args.with_reset:
-                fw.reset()
-
-            if not args.reset:
-                fw.apply(args.flush_connections)
-
-            if not args.no_save:
-                fw.save()
-        else:
-            timeout = 20
-            if args.timeout:
-                timeout = args.timeout
-
+        if not args.no_confirm:
+            timeout = args.timeout or 20
             logger.info('\n*** Rolling back in %d seconds if not confirmed ***', timeout)
 
-            if args.reset or args.with_reset:
-                fw.reset()
+            # Create temp files for rollback
+            ip_rollback = Path(mkstemp()[1])
+            ip6_rollback = Path(mkstemp()[1])
+            ipsets_rollback = Path(mkstemp()[1])
 
-            if not args.reset:
-                fw.apply(args.flush_connections)
+            # Save current firewall setup
+            fw.save(external_ipsets=True, ip_restore=ip_rollback, ip6_restore=ip6_rollback,
+                    ipsets_restore=ipsets_rollback)
 
+        if args.reset or args.with_reset:
+            fw.reset()
+
+        if not args.reset:
+            fw.apply(args.flush_connections)
+
+        if not args.no_confirm:
             message = ('\nThe ruleset has been applied! Press \'Enter\' to confirm.')
 
             try:
                 wait_for_input(message, timeout)
-
-                if not args.no_save:
-                    fw.save()
             except (TimeoutExpired, KeyboardInterrupt):
-                logger.info('\nNo confirmation received. Rolling back...')
-                fw.rollback()
+                logger.warning('\nNo confirmation received. Rolling back...')
 
-        fw.write_restore_script()
+                # Restore previous firewall setup
+                fw.restore(ip_restore=ip_rollback, ip6_restore=ip6_rollback,
+                           ipsets_restore=ipsets_rollback)
+                return 4
+            finally:
+                # Remove rollback files
+                ip_rollback.unlink()
+                ip6_rollback.unlink()
+                ipsets_rollback.unlink()
+
+        if not args.no_save:
+            fw.save()
+            fw.write_restore_script()
     except CalledProcessError as e:
         logger.error(str(e))
         return 1

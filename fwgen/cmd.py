@@ -153,7 +153,7 @@ def _main():
             if not args.no_save:
                 fw.save()
         else:
-            timeout = 30
+            timeout = 20
             if args.timeout:
                 timeout = args.timeout
 

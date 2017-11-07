@@ -107,7 +107,7 @@ def _main():
     try:
         logger.debug("Using defaults file '%s'", args.defaults)
         with open(args.defaults, 'r') as f:
-            config = yaml_load_ordered(f)
+            config = yaml_load_ordered(f) or {}
     except FileNotFoundError as e:
         logger.error(str(e))
         sys.exit(3)
@@ -115,10 +115,8 @@ def _main():
     try:
         logger.debug("Using config file '%s'", args.config)
         with open(args.config, 'r') as f:
-            user_config = yaml_load_ordered(f)
-
-            if user_config:
-                config = ordered_dict_merge(user_config, config)
+            user_config = yaml_load_ordered(f) or {}
+            config = ordered_dict_merge(user_config, config)
     except FileNotFoundError as e:
         if args.config_json:
             logger.warning("'%s' not found. You will loose connectivity if your json config "

@@ -31,7 +31,7 @@ Requirements
 
 -  PyYAML
 -  ipset
--  conntrack (optional)
+-  conntrack (only if you want to flush connections)
 
 Installation
 ============
@@ -39,8 +39,10 @@ Installation
 ::
 
     # Python 3.x
-    apt install ipset python3-yaml python3-pip
+    apt install ipset conntrack python3-yaml python3-pip
     pip3 install fwgen
+    
+PyYAML is pulled in as a dependency automatically via pip, but you may get a compiler error if you do not have the correct dependencies installed. It will still work however, just not as fast. I recommend using the distro packaged version if you have it available. In Debian's case that is ``python3-yaml``.
 
 Installing from source
 ======================

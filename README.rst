@@ -22,7 +22,7 @@ Advantages of using fwgen:
 - Integrates iptables, ip6tables and ipsets in a common management framework
 - Uses a simple config file in YAML format for easy and readable configuration
 - Separation of duties between the loading of firewall rules at boot/ifup (restore-fw) and the rule generation (fwgen). No complex code are executed during boot/ifup.
-- Firewall operations are atomic. It either applies correctly or not, without flushing your existing ruleset, potentially leaving you temporarily exposed. However, ipsets are currently flushed for a very short period to enforce concistency with your configuration.
+- Firewall operations are atomic. It either applies correctly or not, without flushing your existing ruleset, potentially leaving you temporarily exposed.
 - Automatic rollback to previous ruleset if not confirmed when applying rulesets in case something goes wrong. This can be disabled if run automatically by configuration management systems etc.
 - Namespace support. If executed in a namespace it automatically stores the rulesets in ``/etc/netns/<namespace>/`` instead of in the global namespace.
 
@@ -90,12 +90,6 @@ To skip confirmation:
 ::
 
     fwgen --no-confirm
-
-If ipsets in use causes issues with applying the new ruleset:
-
-::
-
-    fwgen --with-reset
 
 In addition to rules defined in the config file you can add/override rules from command line. Add ``--log-level debug`` to see the resulting complete config.
 

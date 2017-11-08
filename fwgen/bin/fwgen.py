@@ -54,9 +54,6 @@ def _main():
                         default=str(Path(fwgen.__file__).parent / 'etc/defaults.yml'),
                         help='Override path to defaults file')
     parser.add_argument('--config-json', metavar='JSON', help='JSON formatted config')
-    parser.add_argument('--with-reset', action='store_true',
-                        help='Clear the firewall before reapplying. Recommended only if ipsets '
-                             'in use are preventing you from applying the new configuration.')
     parser.add_argument('--no-save', action='store_true',
                         help='Apply the ruleset but do not make it persistent')
     parser.add_argument('--flush-connections', action='store_true',
@@ -158,10 +155,9 @@ def _main():
             fw.save(external_ipsets=True, ip_restore=ip_rollback, ip6_restore=ip6_rollback,
                     ipsets_restore=ipsets_rollback)
 
-        if args.reset or args.with_reset:
+        if args.reset:
             fw.reset()
-
-        if not args.reset:
+        else:
             fw.apply(args.flush_connections)
 
         if not args.no_confirm:

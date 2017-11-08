@@ -4,6 +4,8 @@ import logging
 from shutil import copyfile
 from collections import OrderedDict
 from pathlib import Path
+import string
+import random
 
 
 LOGGER = logging.getLogger(__name__)
@@ -51,3 +53,7 @@ def create_config_dir(path):
 
     LOGGER.info("Setting permissions on '%s'", config)
     config.chmod(0o600)
+
+def random_word(length=3):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(length))

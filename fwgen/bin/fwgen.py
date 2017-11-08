@@ -165,7 +165,7 @@ def _main():
             fw.apply(args.flush_connections)
 
         if not args.no_confirm:
-            message = ('\nThe ruleset has been applied! Press \'Enter\' to confirm.')
+            message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to confirm.')
 
             try:
                 wait_for_input(message, timeout)

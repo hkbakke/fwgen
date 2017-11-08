@@ -4,7 +4,7 @@ import logging
 from collections import OrderedDict
 from pathlib import Path
 
-from fwgen.helpers import ordered_dict_merge, get_etc
+from fwgen.helpers import ordered_dict_merge, get_etc, random_word
 
 
 LOGGER = logging.getLogger(__name__)
@@ -118,12 +118,20 @@ class Ip6tables(IptablesCommon):
 class Ipsets(Ruleset):
     def __init__(self, ipset='ipset'):
         super().__init__()
+        self.ipset = ipset
         self.save_cmd = [ipset, 'save']
         self.restore_cmd = [ipset, 'restore']
 
     def apply(self, entries):
         LOGGER.debug("Applying ipsets")
         self._apply(entries)
+
+    def list(self):
+        output = subprocess.check_output([self.ipset, 'list', '-name'])
+        for line in output.decode('utf-8').split('\n'):
+            ipset = line.strip()
+            if ipset:
+                yield ipset
 
     def save(self, path):
         """ Saves currently loaded ipsets to file """
@@ -154,14 +162,13 @@ class Ipsets(Ruleset):
         self._restore(path)
 
     def clear(self):
-        LOGGER.debug("Clearing isets")
-        entries = ['flush', 'destroy']
-        self._apply(entries)
+        LOGGER.debug("Clearing ipsets")
+        self._apply(['flush', 'destroy'])
 
 
 class RestoreScript(object):
-    """ Takes the ruleset objects as input to generate a restore script """
     def __init__(self, iptables, ip6tables, ipsets):
+        """ Take the ruleset objects as input """
         self.iptables = iptables
         self.ip6tables = ip6tables
         self.ipsets = ipsets
@@ -238,13 +245,41 @@ class FwGen(object):
         return new_path
 
     def _output_ipsets(self):
+        current_ipsets = [i for i in self.ipsets.list()]
+
         for ipset, params in self.config.get('ipsets', {}).items():
-            create_cmd = ['-exist create %s %s' % (ipset, params['type'])]
+            # Continue generating temporary setnames until we find one that do not
+            # already exist
+            tmp = '%s.%s' % (ipset, random_word(3))
+            while tmp in current_ipsets:
+                tmp = '%s.%s' % (ipset, random_word(3))
+
+            if ipset in current_ipsets:
+                current_ipsets.remove(ipset)
+            else:
+                create_cmd = ['create %s %s' % (ipset, params['type'])]
+                create_cmd.append(params.get('options', None))
+                yield ' '.join([i for i in create_cmd if i])
+
+            create_cmd = ['create %s %s' % (tmp, params['type'])]
             create_cmd.append(params.get('options', None))
             yield ' '.join([i for i in create_cmd if i])
-            yield 'flush %s' % ipset
+
             for entry in params['entries']:
-                yield self._substitute_variables('add %s %s' % (ipset, entry))
+                yield self._substitute_variables('add %s %s' % (tmp, entry))
+
+            yield 'swap %s %s' % (tmp, ipset)
+            yield 'destroy %s' % tmp
+
+        # Remove any leftover ipsets that we no longer need.
+        # List sets causes errors if the referenced ipsets are removed before the
+        # list set. To avoid this we need to flush the ipsets before we can destroy
+        # them, so we need two passes.
+        for ipset in current_ipsets:
+            yield 'flush %s' % ipset
+
+        for ipset in current_ipsets:
+            yield 'destroy %s' % ipset
 
     def _get_policy_rules(self):
         for table, chains in DEFAULT_CHAINS.items():
@@ -334,13 +369,11 @@ class FwGen(object):
 
     def _substitute_variables(self, string):
         match = re.search(self.variable_pattern, string)
-
         if match:
             variable = match.group(2)
             value = self.config['variables'][variable]
             result = '%s%s%s' % (match.group(1), value, match.group(3))
             return self._substitute_variables(result)
-
         return string
 
     def _parse_rule(self, rule):
@@ -351,12 +384,10 @@ class FwGen(object):
     def _output_rules(self, rules):
         for table in DEFAULT_CHAINS:
             yield '*%s' % table
-
             for rule_table, rule in rules:
                 if rule_table == table:
                     for rule_parsed in self._parse_rule(rule):
                         yield rule_parsed
-
             yield 'COMMIT'
 
     def flush_connections(self):
@@ -378,7 +409,6 @@ class FwGen(object):
 
         self.iptables.save(ip_restore)
         self.ip6tables.save(ip6_restore)
-
         if external_ipsets:
             self.ipsets.save(ipsets_restore)
         else:
@@ -396,7 +426,16 @@ class FwGen(object):
 
     def apply(self, flush_connections=False):
         # Apply ipsets first to ensure they exist when the rules are applied
-        self.ipsets.apply(self._output_ipsets())
+        try:
+            self.ipsets.apply(self._output_ipsets())
+        except RulesetError as e:
+            LOGGER.debug(str(e))
+            LOGGER.warning('Could not apply ipsets atomically. Normally this is caused by '
+                           'non-compatible changes on ipsets being referenced in the firewall '
+                           'ruleset. To resolve this the firewall will be temporary cleared '
+                           'before the configuration is reapplied.')
+            self.reset()
+            self.ipsets.apply(self._output_ipsets())
 
         rules = []
         rules.extend(self._get_policy_rules())
@@ -412,10 +451,9 @@ class FwGen(object):
             self.flush_connections()
 
     def reset(self):
+        # Clear ipsets after the iptables rules to ensure ipsets are not in use
         self.iptables.clear()
         self.ip6tables.clear()
-
-        # Reset ipsets after the rules are removed to ensure ipsets are not in use
         self.ipsets.clear()
 
     def write_restore_script(self):

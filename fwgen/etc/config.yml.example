@@ -1,9 +1,15 @@
 # Paths that do not start with / are relative to /etc, or /etc/netns/<namespace>
 # if executed within a namespace.
+
 #restore_files:
 #  iptables: fwgen/rules/iptables.restore
 #  ip6tables: fwgen/rules/ip6tables.restore
 #  ipsets: fwgen/rules/ipsets.restore
+
+# Change or disable fwgens built-in firewall restoration on reboots and ifup
+#restore_script:
+#  manage: True
+#  path: network/if-pre-up.d/restore-fw
 
 # You can override the paths to the commands used in fwgen
 #cmds:
@@ -13,11 +19,6 @@
 #  ip6tables_restore: ip6tables-restore
 #  ipset: ipset
 #  conntrack: conntrack
-
-# Change or disable fwgens built-in firewall restoration on reboots and ifup
-#restore_script:
-#  manage: True
-#  path: /etc/network/if-pre-up.d/restore-fw
 
 # Rules are applied both to iptables and ip6tables. Use '-4' or '-6' in the rule
 # entry to indicate family if rule are family specific. This is documented in

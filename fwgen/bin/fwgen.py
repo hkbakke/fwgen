@@ -5,7 +5,6 @@ import json
 import logging
 from collections import OrderedDict
 from subprocess import CalledProcessError
-from pkg_resources import resource_filename
 from pathlib import Path
 from tempfile import mkstemp
 
@@ -16,6 +15,7 @@ from fwgen.helpers import ordered_dict_merge, create_config_dir
 
 class TimeoutExpired(Exception):
     pass
+
 
 def alarm_handler(signum, frame):
     raise TimeoutExpired
@@ -51,7 +51,7 @@ def _main():
     parser.add_argument('--config', metavar='PATH', default='/etc/fwgen/config.yml',
                         help='Override path to config file')
     parser.add_argument('--defaults', metavar='PATH',
-                        default=resource_filename('fwgen', 'etc/defaults.yml'),
+                        default=str(Path(fwgen.__file__).parent / 'etc/defaults.yml'),
                         help='Override path to defaults file')
     parser.add_argument('--config-json', metavar='JSON', help='JSON formatted config')
     parser.add_argument('--with-reset', action='store_true',

@@ -70,8 +70,8 @@ class IptablesCommon(Ruleset):
 class Iptables(IptablesCommon):
     def __init__(self, iptables_save='iptables-save', iptables_restore='iptables-restore'):
         super().__init__()
-        self.save_cmd = iptables_save
-        self.restore_cmd = iptables_restore
+        self.save_cmd = [iptables_save]
+        self.restore_cmd = [iptables_restore]
 
     def apply(self, rules):
         LOGGER.debug("Applying iptables rules")
@@ -94,8 +94,8 @@ class Iptables(IptablesCommon):
 class Ip6tables(IptablesCommon):
     def __init__(self, ip6tables_save='iptables-save', ip6tables_restore='iptables-restore'):
         super().__init__()
-        self.save_cmd = ip6tables_save
-        self.restore_cmd = ip6tables_restore
+        self.save_cmd = [ip6tables_save]
+        self.restore_cmd = [ip6tables_restore]
 
     def apply(self, rules):
         LOGGER.debug("Applying ip6tables rules")
@@ -184,9 +184,9 @@ class RestoreScript(object):
             'IP_FW="%s"' % self.iptables.restore_file,
             'IP6_FW="%s"' % self.ip6tables.restore_file,
             '',
-            '[ -f "${IPSETS}" ] && %s < "${IPSETS}"' % self.ipsets.restore_cmd,
-            '[ -f "${IP_FW}" ] && %s < "${IP_FW}"' % self.iptables.restore_cmd,
-            '[ -f "${IP6_FW}" ] && %s < "${IP6_FW}"' % self.ip6tables.restore_cmd
+            '[ -f "${IPSETS}" ] && %s < "${IPSETS}"' % ' '.join(self.ipsets.restore_cmd),
+            '[ -f "${IP_FW}" ] && %s < "${IP_FW}"' % ' '.join(self.iptables.restore_cmd),
+            '[ -f "${IP6_FW}" ] && %s < "${IP6_FW}"' % ' '.join(self.ip6tables.restore_cmd)
         ]
         return content
 

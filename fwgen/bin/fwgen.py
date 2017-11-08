@@ -173,6 +173,7 @@ def _main():
                 logger.warning('\nNo confirmation received. Rolling back...')
 
                 # Restore previous firewall setup
+                fw.reset()
                 fw.restore(ip_restore=ip_rollback, ip6_restore=ip6_rollback,
                            ipsets_restore=ipsets_rollback)
                 return 4

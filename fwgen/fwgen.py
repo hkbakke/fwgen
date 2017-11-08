@@ -293,9 +293,10 @@ class FwGen(object):
         ip6_restore = ip6_restore or self._restore_file['ip6']
         ipsets_restore = ipsets_restore or self._restore_file['ipset']
 
+        # Restore ipsets first to ensure they exist if used in firewall rules
+        self._restore_rules(ipsets_restore, 'ipset')
         self._restore_rules(ip_restore, 'ip')
         self._restore_rules(ip6_restore, 'ip6')
-        self._restore_rules(ipsets_restore, 'ipset')
 
     def apply(self, flush_connections=False):
         # Apply ipsets first to ensure they exist when the rules are applied

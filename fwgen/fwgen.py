@@ -138,23 +138,6 @@ class Ipsets(Ruleset):
         LOGGER.debug("Saving ipsets to '%s'", path)
         self._save(path)
 
-    def save_direct(self, path, entries):
-        """ Writes unapplied list of ipset entries to file """
-        LOGGER.debug("Saving ipsets to '%s'", path)
-
-        try:
-            path.parent.mkdir(parents=True)
-        except FileExistsError:
-            pass
-
-        tmp = path.with_suffix('.tmp')
-        with tmp.open('w') as f:
-            for entry in entries:
-                f.write('%s\n' % entry)
-        tmp.chmod(0o600)
-        tmp.rename(path)
-        self.restore_file = path
-
     def restore(self, path):
         LOGGER.debug("Restoring ipsets from '%s'", path)
         self._restore(path)
@@ -297,9 +280,7 @@ class FwGen(object):
                         yield (table, '-A %s %s' % (zone_chain, rule))
 
     def _get_global_rules(self):
-        """
-        Returns the rules from the global ruleset hooks in correct order
-        """
+        """ Return the rules from the global ruleset hooks in correct order """
         for ruleset in ['pre_default', 'default', 'pre_zone']:
             rules = {}
             try:
@@ -312,7 +293,6 @@ class FwGen(object):
 
     def _get_helper_chains(self):
         rules = {}
-
         try:
             rules = self.config['global']['helper_chains']
         except KeyError:
@@ -390,26 +370,21 @@ class FwGen(object):
     def flush_connections(self):
         LOGGER.info('Flushing connection tracking table...')
         try:
-            subprocess.check_call(
-                [self.config['cmds']['conntrack'], '-F'],
-                stderr=subprocess.DEVNULL
-            )
+            cmd = [self.config['cmds']['conntrack'], '-F']
+            subprocess.check_call(cmd, stderr=subprocess.DEVNULL)
         except FileNotFoundError as e:
-            LOGGER.error('%s. Is conntrack installed? Continuing without '
-                         'flushing connection tracking table...', str(e))
+            LOGGER.error('%s. Is conntrack installed?', str(e))
+            LOGGER.warning('Continuing without flushing connection tracking table...')
             return
 
-    def save(self, external_ipsets=False, ip_restore=None, ip6_restore=None, ipsets_restore=None):
+    def save(self, ip_restore=None, ip6_restore=None, ipsets_restore=None):
         ip_restore = ip_restore or self.restore_file['ip']
         ip6_restore = ip6_restore or self.restore_file['ip6']
         ipsets_restore = ipsets_restore or self.restore_file['ipset']
 
         self.iptables.save(ip_restore)
         self.ip6tables.save(ip6_restore)
-        if external_ipsets:
-            self.ipsets.save(ipsets_restore)
-        else:
-            self.ipsets.save_direct(ipsets_restore, self._output_ipsets())
+        self.ipsets.save(ipsets_restore)
 
     def restore(self, ip_restore=None, ip6_restore=None, ipsets_restore=None):
         ip_restore = ip_restore or self.restore_file['ip']

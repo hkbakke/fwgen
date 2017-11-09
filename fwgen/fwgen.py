@@ -3,6 +3,7 @@ import subprocess
 import logging
 from collections import OrderedDict
 from pathlib import Path
+from shutil import copyfile
 
 from fwgen.helpers import ordered_dict_merge, get_etc, random_word
 
@@ -177,6 +178,29 @@ class RestoreScript(object):
             '[ -f "${IP6_FW}" ] && %s < "${IP6_FW}"' % ' '.join(self.ip6tables.restore_cmd)
         ]
         return content
+
+
+class ConfigDir(object):
+    def __init__(self, dirname):
+        self.dirname = dirname
+        self.config = self.dirname / 'config.yml'
+        self.example_config = Path(__file__).parent / 'etc' / 'config.yml.example'
+
+    def create(self):
+        LOGGER.info("Ensuring '%s' exists...", self.dirname)
+
+        try:
+            self.dirname.mkdir(parents=True)
+        except FileExistsError:
+            pass
+
+        if not self.config.is_file():
+            LOGGER.info("Config file does not exist. Adding empty example config.\n"
+                        "Please edit '%s' before you run fwgen.", self.config)
+            copyfile(str(self.example_config), str(self.config))
+
+        LOGGER.info("Setting permissions on '%s'", self.config)
+        self.config.chmod(0o600)
 
 
 class FwGen(object):

@@ -1,7 +1,6 @@
 import os
 import subprocess
 import logging
-from shutil import copyfile
 from collections import OrderedDict
 from pathlib import Path
 import string
@@ -33,28 +32,6 @@ def get_etc():
 def get_netns():
     cmd = ['ip', 'netns', 'identify', str(os.getpid())]
     return subprocess.check_output(cmd).strip().decode('utf-8')
-
-def create_config_dir(path):
-    if path is None:
-        path = Path(get_etc()) / 'fwgen'
-
-    LOGGER.info("Ensuring '%s' exists...", path)
-
-    try:
-        path.mkdir(parents=True)
-    except FileExistsError:
-        pass
-    example_config = Path(__file__).parent / 'etc/config.yml.example'
-    config = path / 'config.yml'
-
-    if not config.is_file():
-        LOGGER.info("Config file does not exist. Adding empty example config.\n"
-                    "Please edit '%s' before you run fwgen. The default policy is to drop all new "
-                    "sessions!", config)
-        copyfile(str(example_config), str(config))
-
-    LOGGER.info("Setting permissions on '%s'", config)
-    config.chmod(0o600)
 
 def random_word(length=3):
     letters = string.ascii_lowercase

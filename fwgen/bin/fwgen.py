@@ -9,7 +9,7 @@ from pathlib import Path
 from tempfile import mkstemp
 
 from fwgen import fwgen
-from fwgen.helpers import yaml_load_ordered, ordered_dict_merge, create_config_dir
+from fwgen.helpers import yaml_load_ordered, ordered_dict_merge, get_etc
 
 
 class TimeoutExpired(Exception):
@@ -31,8 +31,8 @@ def wait_for_input(message, timeout):
 
 def _main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--create-config-dir', metavar='PATH', nargs='?',
-                        const='__default__', help='Create initial config dir')
+    parser.add_argument('--create-config-dir', metavar='PATH', default=False, nargs='?',
+                        const=Path(get_etc()) / 'fwgen', help='Create initial config dir')
     parser.add_argument('--config', metavar='PATH', default='/etc/fwgen/config.yml',
                         help='Override path to config file')
     parser.add_argument('--defaults', metavar='PATH',
@@ -71,13 +71,9 @@ def _main():
     console = logging.StreamHandler()
     logger.addHandler(console)
 
-    if args.create_config_dir:
-        if args.create_config_dir == '__default__':
-            config_dir = None
-        else:
-            config_dir = args.create_config_dir
-
-        create_config_dir(config_dir)
+    if args.create_config_dir is not False:
+        configdir = fwgen.ConfigDir(Path(args.create_config_dir))
+        configdir.create()
         return 0
 
     #
@@ -144,7 +140,9 @@ def _main():
             fw.flush_connections()
 
         if not args.no_confirm:
-            message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to confirm.')
+            message = ("\nThe ruleset has been applied successfully! Verify that you can "
+                       "establish NEW connections!\n\n-> Press 'Enter' to confirm or "
+                       "'Ctrl-C' to rollback immediately")
 
             try:
                 wait_for_input(message, timeout)

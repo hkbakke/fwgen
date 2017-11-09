@@ -152,8 +152,7 @@ def _main():
             ipsets_rollback = Path(mkstemp()[1])
 
             # Save current firewall setup
-            fw.save(external_ipsets=True, ip_restore=ip_rollback, ip6_restore=ip6_rollback,
-                    ipsets_restore=ipsets_rollback)
+            fw.save(ip_restore=ip_rollback, ip6_restore=ip6_rollback, ipsets_restore=ipsets_rollback)
 
         if args.reset:
             fw.reset()

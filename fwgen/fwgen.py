@@ -138,23 +138,6 @@ class Ipsets(Ruleset):
         LOGGER.debug("Saving ipsets to '%s'", path)
         self._save(path)
 
-    def save_direct(self, path, entries):
-        """ Writes unapplied list of ipset entries to file """
-        LOGGER.debug("Saving ipsets to '%s'", path)
-
-        try:
-            path.parent.mkdir(parents=True)
-        except FileExistsError:
-            pass
-
-        tmp = path.with_suffix('.tmp')
-        with tmp.open('w') as f:
-            for entry in entries:
-                f.write('%s\n' % entry)
-        tmp.chmod(0o600)
-        tmp.rename(path)
-        self.restore_file = path
-
     def restore(self, path):
         LOGGER.debug("Restoring ipsets from '%s'", path)
         self._restore(path)
@@ -406,10 +389,7 @@ class FwGen(object):
 
         self.iptables.save(ip_restore)
         self.ip6tables.save(ip6_restore)
-        if external_ipsets:
-            self.ipsets.save(ipsets_restore)
-        else:
-            self.ipsets.save_direct(ipsets_restore, self._output_ipsets())
+        self.ipsets.save(ipsets_restore)
 
     def restore(self, ip_restore=None, ip6_restore=None, ipsets_restore=None):
         ip_restore = ip_restore or self.restore_file['ip']

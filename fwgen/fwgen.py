@@ -396,7 +396,7 @@ class FwGen(object):
         self.iptables.restore(ip_restore)
         self.ip6tables.restore(ip6_restore)
 
-    def apply(self, flush_connections=False):
+    def apply(self):
         # Apply ipsets first to ensure they exist when the rules are applied
         try:
             self.ipsets.apply(self._output_ipsets())
@@ -418,9 +418,6 @@ class FwGen(object):
 
         self.iptables.apply(self._output_rules(rules))
         self.ip6tables.apply(self._output_rules(rules))
-
-        if flush_connections:
-            self.flush_connections()
 
     def reset(self):
         # Clear ipsets after the iptables rules to ensure ipsets are not in use

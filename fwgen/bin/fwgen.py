@@ -138,7 +138,10 @@ def _main():
             logger.warning('Reset is enabled. The ruleset will be cleared!')
             fw.reset()
         else:
-            fw.apply(args.flush_connections)
+            fw.apply()
+
+        if args.flush_connections:
+            fw.flush_connections()
 
         if not args.no_confirm:
             message = ('\nThe ruleset has been applied successfully! Press \'Enter\' to confirm.')

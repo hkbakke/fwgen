@@ -139,9 +139,7 @@ class Ipsets(Ruleset):
         self._save(path)
 
     def save_direct(self, path, entries):
-        """
-        Writes unapplied list of ipset entries to file
-        """
+        """ Writes unapplied list of ipset entries to file """
         LOGGER.debug("Saving ipsets to '%s'", path)
 
         try:

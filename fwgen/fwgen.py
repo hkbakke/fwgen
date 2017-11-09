@@ -238,8 +238,7 @@ class FwGen(object):
         if str(path).startswith('/'):
             new_path = path
         else:
-            etc = get_etc()
-            new_path = etc / path
+            new_path = get_etc() / path
         return new_path
 
     def _output_ipsets(self):

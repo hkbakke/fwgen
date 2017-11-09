@@ -8,9 +8,8 @@ from subprocess import CalledProcessError
 from pathlib import Path
 from tempfile import mkstemp
 
-import yaml
 from fwgen import fwgen
-from fwgen.helpers import ordered_dict_merge, create_config_dir
+from fwgen.helpers import yaml_load_ordered, ordered_dict_merge, create_config_dir
 
 
 class TimeoutExpired(Exception):
@@ -29,20 +28,6 @@ def wait_for_input(message, timeout):
     finally:
         # Cancel alarm
         signal.alarm(0)
-
-def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
-    class OrderedLoader(Loader):
-        pass
-
-    def construct_mapping(loader, node):
-        loader.flatten_mapping(node)
-        return object_pairs_hook(loader.construct_pairs(node))
-
-    OrderedLoader.add_constructor(
-        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-        construct_mapping)
-
-    return yaml.load(stream, OrderedLoader)
 
 def _main():
     parser = argparse.ArgumentParser()
@@ -152,7 +137,8 @@ def _main():
             ipsets_rollback = Path(mkstemp()[1])
 
             # Save current firewall setup
-            fw.save(ip_restore=ip_rollback, ip6_restore=ip6_rollback, ipsets_restore=ipsets_rollback)
+            fw.save(ip_restore=ip_rollback, ip6_restore=ip6_rollback,
+                    ipsets_restore=ipsets_rollback)
 
         if args.reset:
             fw.reset()

@@ -7,6 +7,8 @@ from pathlib import Path
 import string
 import random
 
+import yaml
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,3 +59,17 @@ def create_config_dir(path):
 def random_word(length=3):
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(length))
+
+def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict):
+    class OrderedLoader(Loader):
+        pass
+
+    def construct_mapping(loader, node):
+        loader.flatten_mapping(node)
+        return object_pairs_hook(loader.construct_pairs(node))
+
+    OrderedLoader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+        construct_mapping)
+
+    return yaml.load(stream, OrderedLoader)

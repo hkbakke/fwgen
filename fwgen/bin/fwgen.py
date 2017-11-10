@@ -43,7 +43,7 @@ def _main():
                         help='Apply the ruleset but do not make it persistent')
     parser.add_argument('--flush-connections', action='store_true',
                         help='Flush all connections after applying ruleset')
-    parser.add_argument('--reset', action='store_true', help='Clear the ruleset')
+    parser.add_argument('--clear', action='store_true', help='Clear the ruleset')
     parser.add_argument(
         '--log-level',
         choices=[
@@ -130,9 +130,9 @@ def _main():
             fw.save(ip_restore=ip_rollback, ip6_restore=ip6_rollback,
                     ipsets_restore=ipsets_rollback)
 
-        if args.reset:
+        if args.clear:
             logger.warning('Reset is enabled. The ruleset will be cleared!')
-            fw.reset()
+            fw.clear()
         else:
             fw.apply()
 

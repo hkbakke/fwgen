@@ -392,7 +392,7 @@ class FwGen(object):
         self.ip6tables.restore(ip6_restore)
 
     def rollback(self):
-        self.reset()
+        self.clear()
 
         # Restore ipsets first to ensure they exist if used in firewall rules
         self.ipsets.restore()
@@ -409,7 +409,7 @@ class FwGen(object):
                            'non-compatible changes on ipsets being referenced in the firewall '
                            'ruleset. To resolve this the firewall will be temporary cleared '
                            'before the configuration is reapplied.')
-            self.reset()
+            self.clear()
             self.ipsets.apply(self._output_ipsets())
 
         rules = []
@@ -422,7 +422,7 @@ class FwGen(object):
         self.iptables.apply(self._output_rules(rules))
         self.ip6tables.apply(self._output_rules(rules))
 
-    def reset(self):
+    def clear(self):
         # Clear ipsets after the iptables rules to ensure ipsets are not in use
         self.iptables.clear()
         self.ip6tables.clear()

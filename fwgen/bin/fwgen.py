@@ -3,6 +3,7 @@ import signal
 import sys
 import json
 import logging
+import traceback
 from collections import OrderedDict
 from subprocess import CalledProcessError
 from pathlib import Path
@@ -71,52 +72,46 @@ def _main():
     console = logging.StreamHandler()
     logger.addHandler(console)
 
-    if args.create_config_dir is not False:
-        configdir = fwgen.ConfigDir(Path(args.create_config_dir))
-        configdir.create()
-        return 0
-
-    #
-    # Configuration merge order. Each merge overrides the previous one if a parameter
-    # is provided in both configurations.
-    #
-    #   1. config from defaults file
-    #   2. config from config file
-    #   3. config provided at runtime via --config-json
-    #
     try:
-        logger.debug("Using defaults file '%s'", args.defaults)
+        if args.create_config_dir is not False:
+            configdir = fwgen.ConfigDir(Path(args.create_config_dir))
+            configdir.create()
+            return 0
+
+        #
+        # Configuration merge order. Each merge overrides the previous one if a parameter
+        # is provided in both configurations.
+        #
+        #   1. config from defaults file
+        #   2. config from config file
+        #   3. config provided at runtime via --config-json
+        #
+        logger.debug("Loading defaults file '%s'", args.defaults)
         with open(args.defaults, 'r') as f:
             config = yaml_load_ordered(f) or {}
-    except FileNotFoundError as e:
-        logger.error(str(e))
-        return 3
 
-    try:
-        logger.debug("Using config file '%s'", args.config)
-        with open(args.config, 'r') as f:
-            user_config = yaml_load_ordered(f) or {}
+        logger.debug("Loading config file '%s'", args.config)
+        try:
+            with open(args.config, 'r') as f:
+                user_config = yaml_load_ordered(f) or {}
             config = ordered_dict_merge(user_config, config)
-    except FileNotFoundError as e:
+        except FileNotFoundError as e:
+            if not args.config_json:
+                raise
+            logger.warning("Config file '%s' not found. All non-default settings must "
+                           "be fed via '--config-json'", args.config)
+
         if args.config_json:
-            logger.warning("'%s' not found. You will loose connectivity if your json config "
-                           "is incomplete!", args.config)
-        else:
-            logger.error(str(e))
-            return 3
+            json_config = json.loads(args.config_json, object_pairs_hook=OrderedDict)
+            config = ordered_dict_merge(json_config, config)
 
-    if args.config_json:
-        json_config = json.loads(args.config_json, object_pairs_hook=OrderedDict)
-        config = ordered_dict_merge(json_config, config)
+        logger.debug('Resulting config: %s', json.dumps(config, indent=4))
 
-    logger.debug('Resulting config: %s', json.dumps(config, indent=4))
+        #
+        # Start doing actual firewall stuff
+        #
+        fw = fwgen.FwGen(config)
 
-    #
-    # Start doing actual firewall stuff
-    #
-    fw = fwgen.FwGen(config)
-
-    try:
         if not args.no_confirm:
             timeout = args.timeout or 20
             logger.info('\n*** Rolling back in %d seconds if not confirmed ***', timeout)
@@ -149,7 +144,7 @@ def _main():
             except (TimeoutExpired, KeyboardInterrupt):
                 logger.warning('\nNo confirmation received. Rolling back...')
                 fw.rollback()
-                return 4
+                return 1
             finally:
                 # Remove rollback files
                 ip_rollback.unlink()
@@ -161,14 +156,9 @@ def _main():
         else:
             fw.save()
             fw.write_restore_script()
-    except CalledProcessError as e:
-        logger.error(str(e))
-        return 1
-    except fwgen.RulesetError as e:
-        logger.error(str(e))
-        return 1
-    except fwgen.InvalidChain as e:
-        logger.error(str(e))
+    except Exception as e:
+        logger.debug(traceback.format_exc())
+        logger.error(e)
         return 1
 
 def main():

@@ -31,6 +31,11 @@ class Ruleset(object):
         self.save_cmd = None
         self.restore_cmd = None
         self.restore_file = None
+        self.ruleset_type = None
+
+    def apply(self, rules):
+        LOGGER.debug("Applying %s rules", self.ruleset_type)
+        self._apply(rules)
 
     def _apply(self, rules):
         data = ('%s\n' % '\n'.join(rules)).encode('utf-8')
@@ -39,9 +44,9 @@ class Ruleset(object):
         if p.returncode != 0:
             raise RulesetError(stderr.decode('utf-8'))
 
-    def _restore(self, path):
-        with path.open('rb') as f:
-            subprocess.check_call(self.restore_cmd, stdin=f)
+    def save(self, path):
+        LOGGER.debug("Saving %s rules to '%s'", self.ruleset_type, path)
+        self._save(path)
 
     def _save(self, path):
         try:
@@ -56,9 +61,19 @@ class Ruleset(object):
         tmp.rename(path)
         self.restore_file = path
 
+    def restore(self, path=None):
+        path = path or self.restore_file
+        LOGGER.debug("Restoring %s rules from '%s'", self.ruleset_type, path)
+        self._restore(path)
+
+    def _restore(self, path):
+        with path.open('rb') as f:
+            subprocess.check_call(self.restore_cmd, stdin=f)
+
 
 class IptablesCommon(Ruleset):
-    def _clear(self):
+    def clear(self):
+        LOGGER.debug("Clearing %s rules", self.ruleset_type)
         rules = []
         for table, chains in DEFAULT_CHAINS.items():
             rules.append('*%s' % table)
@@ -73,23 +88,7 @@ class Iptables(IptablesCommon):
         super().__init__()
         self.save_cmd = [iptables_save]
         self.restore_cmd = [iptables_restore]
-
-    def apply(self, rules):
-        LOGGER.debug("Applying iptables rules")
-        self._apply(rules)
-
-    def save(self, path):
-        """ Saves currently loaded iptables rules to file """
-        LOGGER.debug("Saving iptables rules to '%s'", path)
-        self._save(path)
-
-    def restore(self, path):
-        LOGGER.debug("Restoring iptables rules from '%s'", path)
-        self._restore(path)
-
-    def clear(self):
-        LOGGER.debug("Clearing iptables rules")
-        self._clear()
+        self.ruleset_type = 'iptables'
 
 
 class Ip6tables(IptablesCommon):
@@ -97,23 +96,7 @@ class Ip6tables(IptablesCommon):
         super().__init__()
         self.save_cmd = [ip6tables_save]
         self.restore_cmd = [ip6tables_restore]
-
-    def apply(self, rules):
-        LOGGER.debug("Applying ip6tables rules")
-        self._apply(rules)
-
-    def save(self, path):
-        """ Saves currently loaded ip6tables rules to file """
-        LOGGER.debug("Saving ip6tables rules to '%s'", path)
-        self._save(path)
-
-    def restore(self, path):
-        LOGGER.debug("Restoring ip6tables rules from '%s'", path)
-        self._restore(path)
-
-    def clear(self):
-        LOGGER.debug("Clearing ip6tables rules")
-        self._clear()
+        self.ruleset_type = 'ip6tables'
 
 
 class Ipsets(Ruleset):
@@ -122,10 +105,7 @@ class Ipsets(Ruleset):
         self.ipset = ipset
         self.save_cmd = [ipset, 'save']
         self.restore_cmd = [ipset, 'restore']
-
-    def apply(self, entries):
-        LOGGER.debug("Applying ipsets")
-        self._apply(entries)
+        self.ruleset_type = 'ipset'
 
     def list(self):
         output = subprocess.check_output([self.ipset, 'list', '-name'])
@@ -134,17 +114,8 @@ class Ipsets(Ruleset):
             if ipset:
                 yield ipset
 
-    def save(self, path):
-        """ Saves currently loaded ipsets to file """
-        LOGGER.debug("Saving ipsets to '%s'", path)
-        self._save(path)
-
-    def restore(self, path):
-        LOGGER.debug("Restoring ipsets from '%s'", path)
-        self._restore(path)
-
     def clear(self):
-        LOGGER.debug("Clearing ipsets")
+        LOGGER.debug("Clearing %s rules", self.ruleset_type)
         self._apply(['flush', 'destroy'])
 
 
@@ -419,6 +390,14 @@ class FwGen(object):
         self.ipsets.restore(ipsets_restore)
         self.iptables.restore(ip_restore)
         self.ip6tables.restore(ip6_restore)
+
+    def rollback(self):
+        self.reset()
+
+        # Restore ipsets first to ensure they exist if used in firewall rules
+        self.ipsets.restore()
+        self.iptables.restore()
+        self.ip6tables.restore()
 
     def apply(self):
         # Apply ipsets first to ensure they exist when the rules are applied

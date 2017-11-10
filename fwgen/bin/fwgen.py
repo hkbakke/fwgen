@@ -148,11 +148,7 @@ def _main():
                 wait_for_input(message, timeout)
             except (TimeoutExpired, KeyboardInterrupt):
                 logger.warning('\nNo confirmation received. Rolling back...')
-
-                # Restore previous firewall setup
-                fw.reset()
-                fw.restore(ip_restore=ip_rollback, ip6_restore=ip6_rollback,
-                           ipsets_restore=ipsets_rollback)
+                fw.rollback()
                 return 4
             finally:
                 # Remove rollback files

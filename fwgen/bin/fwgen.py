@@ -5,20 +5,14 @@ import json
 import logging
 import traceback
 from collections import OrderedDict
-from subprocess import CalledProcessError
 from pathlib import Path
-from tempfile import mkstemp
 
 from fwgen import fwgen
 from fwgen.helpers import yaml_load_ordered, ordered_dict_merge, get_etc
 
 
-class TimeoutExpired(Exception):
-    pass
-
-
 def alarm_handler(signum, frame):
-    raise TimeoutExpired
+    raise fwgen.TimeoutExpired
 
 def wait_for_input(message, timeout):
     signal.signal(signal.SIGALRM, alarm_handler)
@@ -59,7 +53,7 @@ def _main():
     )
 
     mutex_group = parser.add_mutually_exclusive_group()
-    mutex_group.add_argument('--timeout', metavar='SECONDS', type=int,
+    mutex_group.add_argument('--timeout', metavar='SECONDS', type=int, default=20,
                              help='Override timeout for rollback')
     mutex_group.add_argument('--no-confirm', action='store_true',
                              help="Don't ask for confirmation before storing ruleset")
@@ -110,52 +104,34 @@ def _main():
         #
         # Start doing actual firewall stuff
         #
-        fw = fwgen.FwGen(config)
+        with fwgen.Rollback(config) as fw:
+            if args.clear:
+                logger.warning('Clearing the firewall...')
+                fw.clear()
+                logger.warning('Firewall cleared!')
+            else:
+                logger.info('Applying ruleset...')
+                fw.apply()
+                logger.info('Ruleset applied successfully!')
 
-        if not args.no_confirm:
-            timeout = args.timeout or 20
-            logger.info('\n*** Rolling back in %d seconds if not confirmed ***', timeout)
+            if args.flush_connections:
+                logger.info('Flushing connection tracking table...')
+                fw.flush_connections()
+                logger.info('Connection tracking table flushed!')
 
-            # Create temp files for rollback
-            ip_rollback = Path(mkstemp()[1])
-            ip6_rollback = Path(mkstemp()[1])
-            ipsets_rollback = Path(mkstemp()[1])
+            if not args.no_confirm:
+                logger.warning('\n*** Rolling back in %d seconds unless confirmed ***\n\nVerify '
+                               'that you can establish NEW connections!', args.timeout)
+                message = ("\n-> Press 'Enter' to confirm or 'Ctrl-C' to rollback immediately\n")
+                wait_for_input(message, args.timeout)
 
-            # Save current firewall setup
-            fw.save(ip_restore=ip_rollback, ip6_restore=ip6_rollback,
-                    ipsets_restore=ipsets_rollback)
-
-        if args.clear:
-            logger.warning('Reset is enabled. The ruleset will be cleared!')
-            fw.clear()
-        else:
-            fw.apply()
-
-        if args.flush_connections:
-            fw.flush_connections()
-
-        if not args.no_confirm:
-            message = ("\nThe ruleset has been applied successfully! Verify that you can "
-                       "establish NEW connections!\n\n-> Press 'Enter' to confirm or "
-                       "'Ctrl-C' to rollback immediately")
-
-            try:
-                wait_for_input(message, timeout)
-            except (TimeoutExpired, KeyboardInterrupt):
-                logger.warning('\nNo confirmation received. Rolling back...')
-                fw.rollback()
-                return 1
-            finally:
-                # Remove rollback files
-                ip_rollback.unlink()
-                ip6_rollback.unlink()
-                ipsets_rollback.unlink()
-
-        if args.no_save:
-            logger.warning('Saving is disabled. The ruleset will not be persistent!')
-        else:
-            fw.save()
-            fw.write_restore_script()
+            if args.no_save:
+                logger.warning('Saving is disabled. The ruleset will not be persistent!')
+            else:
+                fw.save()
+                fw.write_restore_script()
+    except fwgen.TimeoutExpired:
+        return 1
     except Exception as e:
         logger.debug(traceback.format_exc())
         logger.error(e)

@@ -27,10 +27,6 @@ class RulesetError(Exception):
     pass
 
 
-class TimeoutExpired(Exception):
-    pass
-
-
 class Ruleset(object):
     def __init__(self):
         self.save_cmd = None
@@ -451,7 +447,7 @@ class Rollback(FwGen):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type in [TimeoutExpired, KeyboardInterrupt]:
+        if exc_type:
             LOGGER.warning('Rolling back...')
             self.rollback()
         self.ip_rollback.unlink()

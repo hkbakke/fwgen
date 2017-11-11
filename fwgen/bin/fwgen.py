@@ -11,8 +11,12 @@ from fwgen import fwgen
 from fwgen.helpers import yaml_load_ordered, ordered_dict_merge, get_etc
 
 
+class TimeoutExpired(Exception):
+    pass
+
+
 def alarm_handler(signum, frame):
-    raise fwgen.TimeoutExpired
+    raise TimeoutExpired
 
 def wait_for_input(message, timeout):
     signal.signal(signal.SIGALRM, alarm_handler)
@@ -130,7 +134,7 @@ def _main():
             else:
                 fw.save()
                 fw.write_restore_script()
-    except fwgen.TimeoutExpired:
+    except TimeoutExpired:
         return 1
     except Exception as e:
         logger.debug(traceback.format_exc())

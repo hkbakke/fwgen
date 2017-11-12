@@ -62,8 +62,8 @@ class Ruleset(object):
         self.restore_file = path
 
     def running(self):
-        output = subprocess.check_output(self.save_cmd)
-        return [s for s in output.decode('utf-8').strip().split('\n')]
+        output = subprocess.check_output(self.save_cmd, universal_newlines=True)
+        return output.splitlines()
 
 
 class IptablesCommon(Ruleset):
@@ -103,8 +103,8 @@ class Ipsets(Ruleset):
         self.ruleset_type = 'ipset'
 
     def list(self):
-        output = subprocess.check_output([self.ipset, 'list', '-name'])
-        return [s for s in output.decode('utf-8').strip().split('\n')]
+        output = subprocess.check_output([self.ipset, 'list', '-name'], universal_newlines=True)
+        return output.splitlines()
 
     def clear(self):
         LOGGER.debug("Clearing %s rules", self.ruleset_type)

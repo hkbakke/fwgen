@@ -4,7 +4,6 @@ import logging
 from collections import OrderedDict
 from pathlib import Path
 from shutil import copyfile
-from tempfile import mkstemp
 
 from fwgen.helpers import ordered_dict_merge, get_etc, random_word
 
@@ -71,6 +70,10 @@ class Ruleset(object):
         with path.open('rb') as f:
             subprocess.check_call(self.restore_cmd, stdin=f)
 
+    def running(self):
+        output = subprocess.check_output(self.save_cmd)
+        return [s for s in output.decode('utf-8').strip().split('\n')]
+
 
 class IptablesCommon(Ruleset):
     def clear(self):
@@ -110,10 +113,7 @@ class Ipsets(Ruleset):
 
     def list(self):
         output = subprocess.check_output([self.ipset, 'list', '-name'])
-        for line in output.decode('utf-8').split('\n'):
-            ipset = line.strip()
-            if ipset:
-                yield ipset
+        return [s for s in output.decode('utf-8').strip().split('\n')]
 
     def clear(self):
         LOGGER.debug("Clearing %s rules", self.ruleset_type)
@@ -221,7 +221,7 @@ class FwGen(object):
         return new_path
 
     def _output_ipsets(self):
-        current_ipsets = [i for i in self.ipsets.list()]
+        current_ipsets = self.ipsets.list()
 
         for ipset, params in self.config.get('ipsets', {}).items():
             # Continue generating temporary setnames until we find one that do not
@@ -437,27 +437,20 @@ class Rollback(FwGen):
         self.ipsets_rollback = None
 
     def __enter__(self):
-        self.ip_rollback = Path(mkstemp()[1])
-        self.ip6_rollback = Path(mkstemp()[1])
-        self.ipsets_rollback = Path(mkstemp()[1])
-
-        # Save current firewall setup
-        self.save(ip_restore=self.ip_rollback, ip6_restore=self.ip6_rollback,
-                  ipsets_restore=self.ipsets_rollback)
+        self.ip_rollback = self.iptables.running()
+        self.ip6_rollback = self.ip6tables.running()
+        self.ipsets_rollback = self.ipsets.running()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type:
             LOGGER.warning('Rolling back...')
             self.rollback()
-        self.ip_rollback.unlink()
-        self.ip6_rollback.unlink()
-        self.ipsets_rollback.unlink()
 
     def rollback(self):
         self.clear()
 
         # Restore ipsets first to ensure they exist if used in firewall rules
-        self.ipsets.restore(self.ipsets_rollback)
-        self.iptables.restore(self.ip_rollback)
-        self.ip6tables.restore(self.ip6_rollback)
+        self.ipsets.apply(self.ipsets_rollback)
+        self.iptables.apply(self.ip_rollback)
+        self.ip6tables.apply(self.ip6_rollback)

@@ -38,11 +38,12 @@ class Ruleset(object):
         self._apply(rules)
 
     def _apply(self, rules):
-        data = ('%s\n' % '\n'.join(rules)).encode('utf-8')
-        p = subprocess.Popen(self.restore_cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-        _, stderr = p.communicate(data)
+        data = '%s\n' % '\n'.join(rules)
+        p = subprocess.Popen(self.restore_cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE,
+                             universal_newlines=True)
+        stderr = p.communicate(data)[1]
         if p.returncode != 0:
-            raise RulesetError(stderr.decode('utf-8'))
+            raise RulesetError(stderr)
 
     def save(self, path):
         LOGGER.debug("Saving %s rules to '%s'", self.ruleset_type, path)

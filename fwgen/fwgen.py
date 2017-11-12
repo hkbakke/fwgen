@@ -392,10 +392,8 @@ class FwGen(object):
             self.ipsets.apply(ipsets)
         except RulesetError as e:
             LOGGER.debug(str(e))
-            LOGGER.warning('Could not apply ipsets atomically. Normally this is caused by '
-                           'non-compatible changes on ipsets being referenced in the firewall '
-                           'ruleset. To resolve this the firewall will be temporary cleared '
-                           'before the configuration is reapplied.')
+            LOGGER.warning('The changes to the ipset configuration is not compatible with'
+                           ' atomic updating. The firewall will be temporary cleared!')
             self.clear()
             self.ipsets.apply(ipsets)
 

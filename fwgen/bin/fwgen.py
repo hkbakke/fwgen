@@ -116,7 +116,7 @@ def _main():
             else:
                 logger.info('Applying ruleset...')
                 fw.apply()
-                logger.info('Ruleset applied successfully!')
+                logger.info('Ruleset applied!')
 
             if args.flush_connections:
                 logger.info('Flushing connection tracking table...')
@@ -124,7 +124,7 @@ def _main():
                 logger.info('Connection tracking table flushed!')
 
             if not args.no_confirm:
-                logger.warning('\n*** Rolling back in %d seconds unless confirmed ***\n\nVerify '
+                logger.warning('\nRolling back in %d seconds unless confirmed. Verify '
                                'that you can establish NEW connections!', args.timeout)
                 message = ("\n-> Press 'Enter' to confirm or 'Ctrl-C' to rollback immediately\n")
                 wait_for_input(message, args.timeout)
@@ -132,8 +132,10 @@ def _main():
             if args.no_save:
                 logger.warning('Saving is disabled. The ruleset will not be persistent!')
             else:
+                logger.info('Saving ruleset...')
                 fw.save()
                 fw.write_restore_script()
+                logger.info('Ruleset saved!')
     except TimeoutExpired:
         return 1
     except Exception as e:

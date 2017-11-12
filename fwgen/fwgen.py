@@ -61,15 +61,6 @@ class Ruleset(object):
         tmp.rename(path)
         self.restore_file = path
 
-    def restore(self, path=None):
-        path = path or self.restore_file
-        LOGGER.debug("Restoring %s rules from '%s'", self.ruleset_type, path)
-        self._restore(path)
-
-    def _restore(self, path):
-        with path.open('rb') as f:
-            subprocess.check_call(self.restore_cmd, stdin=f)
-
     def running(self):
         output = subprocess.check_output(self.save_cmd)
         return [s for s in output.decode('utf-8').strip().split('\n')]
@@ -372,24 +363,10 @@ class FwGen(object):
             LOGGER.warning('Continuing without flushing connection tracking table...')
             return
 
-    def save(self, ip_restore=None, ip6_restore=None, ipsets_restore=None):
-        ip_restore = ip_restore or self.restore_file['ip']
-        ip6_restore = ip6_restore or self.restore_file['ip6']
-        ipsets_restore = ipsets_restore or self.restore_file['ipset']
-
-        self.iptables.save(ip_restore)
-        self.ip6tables.save(ip6_restore)
-        self.ipsets.save(ipsets_restore)
-
-    def restore(self, ip_restore=None, ip6_restore=None, ipsets_restore=None):
-        ip_restore = ip_restore or self.restore_file['ip']
-        ip6_restore = ip6_restore or self.restore_file['ip6']
-        ipsets_restore = ipsets_restore or self.restore_file['ipset']
-
-        # Restore ipsets first to ensure they exist if used in firewall rules
-        self.ipsets.restore(ipsets_restore)
-        self.iptables.restore(ip_restore)
-        self.ip6tables.restore(ip6_restore)
+    def save(self):
+        self.iptables.save(self.restore_file['ip'])
+        self.ip6tables.save(self.restore_file['ip6'])
+        self.ipsets.save(self.restore_file['ipset'])
 
     def apply(self):
         # Apply ipsets first to ensure they exist when the rules are applied

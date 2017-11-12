@@ -211,15 +211,19 @@ class FwGen(object):
             new_path = get_etc() / path
         return new_path
 
+    @staticmethod
+    def _get_ipset_tmp_name(ipset):
+        return '%s.%s' % (ipset, random_word(3))
+
     def _output_ipsets(self):
         current_ipsets = self.ipsets.list()
 
         for ipset, params in self.config.get('ipsets', {}).items():
             # Continue generating temporary setnames until we find one that do not
             # already exist
-            tmp = '%s.%s' % (ipset, random_word(3))
+            tmp = self._get_ipset_tmp_name(ipset)
             while tmp in current_ipsets:
-                tmp = '%s.%s' % (ipset, random_word(3))
+                tmp = self._get_ipset_tmp_name(ipset)
 
             if ipset in current_ipsets:
                 current_ipsets.remove(ipset)

@@ -111,6 +111,48 @@ class Ipsets(Ruleset):
         LOGGER.debug("Clearing %s rules", self.ruleset_type)
         self._apply(['flush', 'destroy'])
 
+    @staticmethod
+    def _get_ipset_tmp_name(ipset):
+        return '%s.%s' % (ipset, random_word(3))
+
+    def apply(self, rules):
+        LOGGER.debug("Applying %s rules", self.ruleset_type)
+        current_ipsets = self.list()
+        output = []
+        tmp_ipsets = {}
+        cur = None
+
+        for rule in rules:
+            ipset = rule.split(maxsplit=2)[1]
+            if ipset in current_ipsets:
+                if ipset != cur:
+                    tmp = self._get_ipset_tmp_name(ipset)
+                    while tmp in current_ipsets:
+                        tmp = self._get_ipset_tmp_name(ipset)
+                    tmp_ipsets[ipset] = tmp
+                output.append(rule.replace(ipset, tmp_ipsets[ipset], 1))
+            else:
+                output.append(rule)
+            cur = ipset
+
+        for ipset, tmp in tmp_ipsets.items():
+            output.append('swap %s %s' % (tmp, ipset))
+            output.append('destroy %s' % tmp)
+
+        # Remove any leftover ipsets that we no longer need.
+        # List sets causes errors if the referenced ipsets are removed before the
+        # list set. To avoid this we need to flush the ipsets before we can destroy
+        # them, so we need two passes.
+        destroy = [i for i in current_ipsets if i not in tmp_ipsets]
+
+        for ipset in destroy:
+            output.append('flush %s' % ipset)
+
+        for ipset in destroy:
+            output.append('destroy %s' % ipset)
+
+        self._apply(output)
+
 
 class RestoreScript(object):
     def __init__(self, iptables, ip6tables, ipsets):
@@ -212,46 +254,15 @@ class FwGen(object):
             new_path = get_etc() / path
         return new_path
 
-    @staticmethod
-    def _get_ipset_tmp_name(ipset):
-        return '%s.%s' % (ipset, random_word(3))
-
     def _output_ipsets(self):
-        current_ipsets = self.ipsets.list()
-
+        output = []
         for ipset, params in self.config.get('ipsets', {}).items():
-            # Continue generating temporary setnames until we find one that do not
-            # already exist
-            tmp = self._get_ipset_tmp_name(ipset)
-            while tmp in current_ipsets:
-                tmp = self._get_ipset_tmp_name(ipset)
-
-            if ipset in current_ipsets:
-                current_ipsets.remove(ipset)
-            else:
-                create_cmd = ['create %s %s' % (ipset, params['type'])]
-                create_cmd.append(params.get('options', None))
-                yield ' '.join([i for i in create_cmd if i])
-
-            create_cmd = ['create %s %s' % (tmp, params['type'])]
+            create_cmd = ['create %s %s' % (ipset, params['type'])]
             create_cmd.append(params.get('options', None))
-            yield ' '.join([i for i in create_cmd if i])
-
+            output.append(' '.join([i for i in create_cmd if i]))
             for entry in params['entries']:
-                yield self._substitute_variables('add %s %s' % (tmp, entry))
-
-            yield 'swap %s %s' % (tmp, ipset)
-            yield 'destroy %s' % tmp
-
-        # Remove any leftover ipsets that we no longer need.
-        # List sets causes errors if the referenced ipsets are removed before the
-        # list set. To avoid this we need to flush the ipsets before we can destroy
-        # them, so we need two passes.
-        for ipset in current_ipsets:
-            yield 'flush %s' % ipset
-
-        for ipset in current_ipsets:
-            yield 'destroy %s' % ipset
+                output.append(self._substitute_variables('add %s %s' % (ipset, entry)))
+        return output
 
     def _get_policy_rules(self):
         for table, chains in DEFAULT_CHAINS.items():
@@ -351,13 +362,15 @@ class FwGen(object):
             yield rule_expanded
 
     def _output_rules(self, rules):
+        output = []
         for table in DEFAULT_CHAINS:
-            yield '*%s' % table
+            output.append('*%s' % table)
             for rule_table, rule in rules:
                 if rule_table == table:
                     for rule_parsed in self._parse_rule(rule):
-                        yield rule_parsed
-            yield 'COMMIT'
+                        output.append(rule_parsed)
+            output.append('COMMIT')
+        return output
 
     def flush_connections(self):
         try:
@@ -373,10 +386,10 @@ class FwGen(object):
         self.ip6tables.save(self.restore_file['ip6'])
         self.ipsets.save(self.restore_file['ipset'])
 
-    def apply(self):
+    def _apply(self, ip_rules, ip6_rules, ipsets):
         # Apply ipsets first to ensure they exist when the rules are applied
         try:
-            self.ipsets.apply(self._output_ipsets())
+            self.ipsets.apply(ipsets)
         except RulesetError as e:
             LOGGER.debug(str(e))
             LOGGER.warning('Could not apply ipsets atomically. Normally this is caused by '
@@ -384,17 +397,20 @@ class FwGen(object):
                            'ruleset. To resolve this the firewall will be temporary cleared '
                            'before the configuration is reapplied.')
             self.clear()
-            self.ipsets.apply(self._output_ipsets())
+            self.ipsets.apply(ipsets)
 
+        self.iptables.apply(ip_rules)
+        self.ip6tables.apply(ip6_rules)
+
+    def apply(self):
         rules = []
         rules.extend(self._get_policy_rules())
         rules.extend(self._get_helper_chains())
         rules.extend(self._get_global_rules())
         rules.extend(self._get_zone_dispatchers())
         rules.extend(self._get_zone_rules())
-
-        self.iptables.apply(self._output_rules(rules))
-        self.ip6tables.apply(self._output_rules(rules))
+        iptables_rules = self._output_rules(rules)
+        self._apply(iptables_rules, iptables_rules, self._output_ipsets())
 
     def clear(self):
         # Clear ipsets after the iptables rules to ensure ipsets are not in use
@@ -430,9 +446,4 @@ class Rollback(FwGen):
             self.rollback()
 
     def rollback(self):
-        self.clear()
-
-        # Restore ipsets first to ensure they exist if used in firewall rules
-        self.ipsets.apply(self.ipsets_rollback)
-        self.iptables.apply(self.ip_rollback)
-        self.ip6tables.apply(self.ip6_rollback)
+        self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

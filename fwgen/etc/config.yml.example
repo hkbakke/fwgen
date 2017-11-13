@@ -11,12 +11,12 @@
 #  manage: True
 #  path: network/if-pre-up.d/restore-fw
 
-# You can run commands here to trigger additional tests after the firewall
-# ruleset have been applied. The check commands must return 0 or the firewall
-# will rollback the configuration. Pipes and redirects are not supported.
+# Add check commands here to verify connectivity after the firewall ruleset has
+# been applied. The check commands must return exit code 0 or the firewall will
+# rollback the configuration. Shell features are not supported.
 #check_commands:
 #  - ping -c 8.8.8.8
-#  - ssh testhost run_check_cmd
+#  - ssh user@testhost run-port-check
 
 # You can override the paths to the commands used in fwgen
 #cmds:
@@ -26,14 +26,6 @@
 #  ip6tables_restore: ip6tables-restore
 #  ipset: ipset
 #  conntrack: conntrack
-
-# Rules are applied both to iptables and ip6tables. Use '-4' or '-6' in the rule
-# entry to indicate family if rule are family specific. This is documented in
-# the ip(6)tables manual. However, only family specific rules are finally stored
-# to the restore files.
-
-#variables:
-#  web_server: 10.0.0.10
 
 # Example ipsets for use in the iptables rules via the set module
 #ipsets:
@@ -60,6 +52,11 @@
 #    entries:
 #      - 4.4.4.4
 #      - 8.8.4.4
+
+# Rules are applied both to iptables and ip6tables. Use '-4' or '-6' in the rule
+# entry to indicate family if rule are family specific. This is documented in
+# the ip(6)tables manual. However, only family specific rules are finally stored
+# to the restore files.
 
 #global:
 #  # You may override the default filter policies of "DROP". However, this is not really
@@ -95,24 +92,6 @@
 #        # Add TFTP conntrack helper (new behaviour as of kernel 4.7)
 #        PREROUTING:
 #          - -4 -p udp -d 10.0.0.200 --dport 69 -j CT --helper tftp
-
-#zones:
-#  dmz:
-#    interfaces:
-#      - eth3
-#      - eth4
-#  lan:
-#    interfaces:
-#      - eth0
-#      - eth1
-#    rules:
-#      filter:
-#        INPUT:
-#          - -p tcp --dport 22 -j ACCEPT
-#          - -4 -p icmp --imcp-type echo-request -j ACCEPT
-#        OUTPUT:
-#          - -j ACCEPT
-
 
 #
 # Complete minimal example for a classic two interface gateway with NAT
@@ -204,7 +183,7 @@
 
 # ---- initial config start ----
 #
-# Please uncomment/remove this block after you have configured your firewall.
+# Please comment out or remove this block after you have configured your firewall.
 # This is just a safety net to prevent you from full connectivity loss if fwgen
 # is executed without being configured after '--create-config-dir' has been run
 #

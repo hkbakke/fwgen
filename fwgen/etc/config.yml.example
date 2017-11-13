@@ -11,6 +11,13 @@
 #  manage: True
 #  path: network/if-pre-up.d/restore-fw
 
+# You can run commands here to trigger additional tests after the firewall
+# ruleset have been applied. The check commands must return 0 or the firewall
+# will rollback the configuration. Pipes and redirects are not supported.
+#check_commands:
+#  - ping -c 8.8.8.8
+#  - ssh testhost run_check_cmd
+
 # You can override the paths to the commands used in fwgen
 #cmds:
 #  iptables_save: iptables-save

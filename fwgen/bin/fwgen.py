@@ -123,6 +123,10 @@ def _main():
                 fw.flush_connections()
                 logger.info('Connection tracking table flushed!')
 
+            logger.info('Running check commands...')
+            fw.check()
+            logger.info('Check commands OK!')
+
             if not args.no_confirm:
                 logger.warning('\nRolling back in %d seconds unless confirmed. Verify '
                                'that you can establish NEW connections!', args.timeout)

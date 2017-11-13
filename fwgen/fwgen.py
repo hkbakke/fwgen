@@ -229,7 +229,8 @@ class FwGen(object):
             'restore_script': {
                 'manage': True,
                 'path': 'network/if-pre-up.d/restore-fw'
-            }
+            },
+            'check_commands': []
         }
         self.config = ordered_dict_merge(config, defaults)
         self.iptables = Iptables(self.config['cmds']['iptables_save'],
@@ -442,6 +443,17 @@ class Rollback(FwGen):
         if exc_type:
             LOGGER.warning('Rolling back...')
             self.rollback()
+
+    def check(self):
+        for cmd in self.config['check_commands']:
+            LOGGER.debug('Command: %s', cmd)
+            try:
+                output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT,
+                                                 universal_newlines=True)
+            except subprocess.CalledProcessError as e:
+                LOGGER.error(e.output)
+                raise
+            LOGGER.debug(output)
 
     def rollback(self):
         self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

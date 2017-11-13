@@ -40,8 +40,13 @@ Installation
 
 ::
 
-    # Python 3.x
-    apt install ipset conntrack python3-yaml python3-pip
+    # Debian based
+    apt install ipset conntrack python3-yaml python3-pip -y
+    pip3 install fwgen
+    
+    # CentOS 7.x
+    rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    yum install -y python34-pip conntrack
     pip3 install fwgen
 
 PyYAML is pulled in as a dependency automatically via pip, but you may get a compiler error if you do not have the correct dependencies installed. It will still work however, just not as fast. I recommend using the distro packaged version if you have it available. In Debian's case that is ``python3-yaml``.

@@ -40,11 +40,13 @@ Installation
 
 ::
 
-    # Debian based
+    # Debian / Ubuntu
     apt install ipset conntrack python3-yaml python3-pip -y
     pip3 install fwgen
+
+::
     
-    # CentOS 7.x
+    # CentOS 7
     rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
     yum install -y python34-pip conntrack
     pip3 install fwgen

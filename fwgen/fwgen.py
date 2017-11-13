@@ -1,9 +1,10 @@
 import re
 import subprocess
 import logging
+import shutil
+import filecmp
 from collections import OrderedDict
 from pathlib import Path
-from shutil import copyfile
 
 from fwgen.helpers import ordered_dict_merge, get_etc, random_word
 
@@ -154,34 +155,98 @@ class Ipsets(Ruleset):
         self._apply(output)
 
 
-class RestoreScript(object):
-    def __init__(self, iptables, ip6tables, ipsets):
+class FirewallService(object):
+    def __init__(self, name, iptables, ip6tables, ipsets):
         """ Take the ruleset objects as input """
         self.iptables = iptables
         self.ip6tables = ip6tables
         self.ipsets = ipsets
+        self.name = name
+        self.unitfile = Path('/etc/systemd/system') / Path('%s.service' % name)
 
-    def write(self, path):
-        """ Atomically update the content and permissions of an executable file """
-        LOGGER.debug("Writing restore script to '%s'", path)
-        tmp = path.with_suffix('.tmp')
+    def create(self):
+        tmp = self.unitfile.with_suffix('.tmp')
         with tmp.open('w') as f:
             for item in self._get_content():
                 f.write('%s\n' % item)
-        tmp.chmod(0o755)
-        tmp.rename(path)
+
+        if self.unitfile.exists() and filecmp.cmp(str(self.unitfile), str(tmp)):
+            LOGGER.debug("'%s' do not need updating", self.unitfile)
+            tmp.unlink()
+            return
+
+        tmp.chmod(0o644)
+        LOGGER.debug("Updating '%s'", self.unitfile)
+        tmp.rename(self.unitfile)
+        self.reload()
+
+    def _enable(self):
+        cmd = ['systemctl', 'enable', self.unitfile.name]
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
+                                             universal_newlines=True).strip()
+        except subprocess.CalledProcessError as e:
+            LOGGER.error(e.output)
+            raise
+        if output:
+            LOGGER.debug(output)
+
+    def enable(self):
+        self.create()
+        LOGGER.debug("Enabling service '%s'", self.name)
+        self._enable()
+
+    def _disable(self):
+        cmd = ['systemctl', 'disable', self.unitfile.name]
+        try:
+            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
+                                             universal_newlines=True).strip()
+        except subprocess.CalledProcessError as e:
+            LOGGER.error(e.output)
+            raise
+        if output:
+            LOGGER.debug(output)
+
+    def disable(self):
+        if self.unitfile.exists():
+            LOGGER.debug("Disabling service '%s'", self.name)
+            self.stop()
+            self._disable()
+            self.unitfile.unlink()
+            self.reload()
+        else:
+            LOGGER.debug("Service '%s' is disabled", self.name)
+
+    def start(self):
+        LOGGER.debug("Starting service '%s'", self.name)
+        subprocess.check_call(['systemctl', 'start', self.unitfile.name])
+
+    def stop(self):
+        LOGGER.debug("Stopping service '%s'", self.name)
+        subprocess.check_call(['systemctl', 'stop', self.unitfile.name])
+
+    @staticmethod
+    def reload():
+        LOGGER.debug('Reloading systemd service configuration')
+        subprocess.check_call(['systemctl', 'daemon-reload'])
 
     def _get_content(self):
         content = [
-            '#!/bin/sh',
+            '[Unit]',
+            'Description=fwgen firewall',
             '',
-            'IPSETS="%s"' % self.ipsets.restore_file,
-            'IP_FW="%s"' % self.iptables.restore_file,
-            'IP6_FW="%s"' % self.ip6tables.restore_file,
+            '[Service]',
+            'Type=oneshot',
+            'RemainAfterExit=yes',
+            'ExecStart=%s -exist -file "%s"' % (
+                ' '.join(self.ipsets.restore_cmd), self.ipsets.restore_file),
+            'ExecStart=%s "%s"' % (
+                ' '.join(self.iptables.restore_cmd), self.iptables.restore_file),
+            'ExecStart=%s "%s"' % (
+                ' '.join(self.ip6tables.restore_cmd), self.ip6tables.restore_file),
             '',
-            '[ -f "${IPSETS}" ] && %s < "${IPSETS}"' % ' '.join(self.ipsets.restore_cmd),
-            '[ -f "${IP_FW}" ] && %s < "${IP_FW}"' % ' '.join(self.iptables.restore_cmd),
-            '[ -f "${IP6_FW}" ] && %s < "${IP6_FW}"' % ' '.join(self.ip6tables.restore_cmd)
+            '[Install]',
+            'WantedBy=multi-user.target'
         ]
         return content
 
@@ -203,7 +268,7 @@ class ConfigDir(object):
         if not self.config.is_file():
             LOGGER.info("Config file does not exist. Adding empty example config.\n"
                         "Please edit '%s' before you run fwgen.", self.config)
-            copyfile(str(self.example_config), str(self.config))
+            shutil.copyfile(str(self.example_config), str(self.config))
 
         LOGGER.info("Setting permissions on '%s'", self.config)
         self.config.chmod(0o600)
@@ -219,16 +284,16 @@ class FwGen(object):
                 'ipsets': 'fwgen/rules/ipsets.restore'
             },
             'cmds': {
-                'iptables_save': 'iptables-save',
-                'iptables_restore': 'iptables-restore',
-                'ip6tables_save': 'ip6tables-save',
-                'ip6tables_restore': 'ip6tables-restore',
-                'ipset': 'ipset',
+                'iptables_save': shutil.which('iptables-save'),
+                'iptables_restore': shutil.which('iptables-restore'),
+                'ip6tables_save': shutil.which('ip6tables-save'),
+                'ip6tables_restore': shutil.which('ip6tables-restore'),
+                'ipset': shutil.which('ipset'),
                 'conntrack': 'conntrack'
             },
-            'restore_script': {
-                'manage': True,
-                'path': 'network/if-pre-up.d/restore-fw'
+            'systemd_service': {
+                'enable': True,
+                'name': 'fwgen'
             },
             'check_commands': []
         }
@@ -243,7 +308,6 @@ class FwGen(object):
             'ip6': self._get_path(Path(self.config['restore_files']['ip6tables'])),
             'ipset': self._get_path(Path(self.config['restore_files']['ipsets']))
         }
-        self.restore_script = self._get_path(Path(self.config['restore_script']['path']))
         self.zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
         self.variable_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
 
@@ -417,13 +481,14 @@ class FwGen(object):
         self.ip6tables.clear()
         self.ipsets.clear()
 
-    def write_restore_script(self):
-        if not self.config['restore_script']['manage']:
-            LOGGER.debug('Restore script management is disabled. Skipping...')
-            return
-
-        script = RestoreScript(self.iptables, self.ip6tables, self.ipsets)
-        script.write(self.restore_script)
+    def service(self):
+        service = FirewallService(self.config['systemd_service']['name'], self.iptables,
+                                  self.ip6tables, self.ipsets)
+        if self.config['systemd_service']['enable']:
+            service.enable()
+            service.start()
+        else:
+            service.disable()
 
 
 class Rollback(FwGen):
@@ -449,11 +514,12 @@ class Rollback(FwGen):
             LOGGER.debug('Command: %s', cmd)
             try:
                 output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT,
-                                                 universal_newlines=True)
+                                                 universal_newlines=True).strip()
             except subprocess.CalledProcessError as e:
                 LOGGER.error(e.output)
                 raise
-            LOGGER.debug(output)
+            if output:
+                LOGGER.debug(output)
 
     def rollback(self):
         self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

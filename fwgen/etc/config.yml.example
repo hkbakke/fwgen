@@ -6,10 +6,10 @@
 #  ip6tables: fwgen/rules/ip6tables.restore
 #  ipsets: fwgen/rules/ipsets.restore
 
-# Change or disable fwgens built-in firewall restoration on reboots and ifup
-#restore_script:
-#  manage: True
-#  path: network/if-pre-up.d/restore-fw
+# fwgen by default manages its own systemd service for persistence between reboots
+#systemd_service:
+#  enable: True
+#  name: fwgen
 
 # Add check commands here to verify connectivity after the firewall ruleset has
 # been applied. The check commands must return exit code 0 or the firewall will

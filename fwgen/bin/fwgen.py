@@ -138,7 +138,7 @@ def _main():
             else:
                 logger.info('Saving ruleset...')
                 fw.save()
-                fw.write_restore_script()
+                fw.service()
                 logger.info('Ruleset saved!')
     except TimeoutExpired:
         return 1

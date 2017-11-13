@@ -21,7 +21,7 @@ Advantages of using fwgen:
 
 - Integrates iptables, ip6tables and ipsets in a common management framework
 - Uses a simple config file in YAML format for easy and readable configuration
-- Separation of duties between the loading of firewall rules at boot/ifup (restore-fw) and the rule generation (fwgen). No complex code are executed during boot/ifup.
+- Separation of duties between the loading of firewall rules at boot (restore files) and the rule generation (fwgen). No complex code are executed during boot/ifup.
 - Firewall operations are atomic. It either applies correctly or not, without flushing your existing ruleset, potentially leaving you temporarily exposed.
 - Automatic rollback to previous ruleset if something goes wrong
 - Supports check commands to automatically roll back ruleset if check fails

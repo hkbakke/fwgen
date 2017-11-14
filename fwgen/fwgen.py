@@ -42,6 +42,15 @@ class Ruleset(object):
         if p.returncode != 0:
             raise RulesetError(stderr)
 
+    def restore(self, path=None):
+        path = path or self.restore_file
+        LOGGER.debug("Restoring %s rules from '%s'", self.ruleset_type, path)
+        self._restore(path)
+
+    def _restore(self, path):
+        with path.open('rb') as f:
+            subprocess.check_call(self.restore_cmd, stdin=f)
+
     def save(self, path):
         LOGGER.debug("Saving %s rules to '%s'", self.ruleset_type, path)
         self._save(path)
@@ -450,6 +459,11 @@ class FwGen(object):
         self.iptables.save(self.restore_file['ip'])
         self.ip6tables.save(self.restore_file['ip6'])
         self.ipsets.save(self.restore_file['ipset'])
+
+    def restore(self):
+        self.iptables.restore(self.restore_file['ip'])
+        self.ip6tables.restore(self.restore_file['ip6'])
+        self.ipsets.restore(self.restore_file['ipset'])
 
     def _apply(self, ip_rules, ip6_rules, ipsets):
         # Apply ipsets first to ensure they exist when the rules are applied

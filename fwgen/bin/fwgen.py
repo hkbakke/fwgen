@@ -42,7 +42,6 @@ def _main():
                         help='Apply the ruleset but do not make it persistent')
     parser.add_argument('--flush-connections', action='store_true',
                         help='Flush all connections after applying ruleset')
-    parser.add_argument('--clear', action='store_true', help='Clear the ruleset')
     parser.add_argument(
         '--log-level',
         choices=[
@@ -55,13 +54,14 @@ def _main():
         default='info',
         help='Set log level for console output'
     )
-
-    mutex_group = parser.add_mutually_exclusive_group()
-    mutex_group.add_argument('--timeout', metavar='SECONDS', type=int, default=20,
-                             help='Override timeout for rollback')
-    mutex_group.add_argument('--no-confirm', action='store_true',
-                             help="Don't ask for confirmation before storing ruleset")
-
+    mutex_1 = parser.add_mutually_exclusive_group()
+    mutex_1.add_argument('--timeout', metavar='SECONDS', type=int, default=20,
+                         help='Override timeout for rollback')
+    mutex_1.add_argument('--no-confirm', action='store_true',
+                         help="Don't ask for confirmation before storing ruleset")
+    mutex_2 = parser.add_mutually_exclusive_group()
+    mutex_2.add_argument('--clear', action='store_true', help='Clear the ruleset')
+    mutex_2.add_argument('--restore', action='store_true', help='Restore saved ruleset')
     args = parser.parse_args()
 
     # Set up logging
@@ -113,6 +113,10 @@ def _main():
                 logger.warning('Clearing the firewall...')
                 fw.clear()
                 logger.warning('Firewall cleared!')
+            elif args.restore:
+                logger.info('Restoring ruleset...')
+                fw.restore()
+                logger.info('Ruleset restored!')
             else:
                 logger.info('Applying ruleset...')
                 fw.apply()
@@ -133,13 +137,14 @@ def _main():
                 message = ("\n-> Press 'Enter' to confirm or 'Ctrl-C' to rollback immediately\n")
                 wait_for_input(message, args.timeout)
 
-            if args.no_save:
-                logger.warning('Saving is disabled. The ruleset will not be persistent!')
-            else:
-                logger.info('Saving ruleset...')
-                fw.save()
-                fw.service()
-                logger.info('Ruleset saved!')
+            if not args.restore:
+                if args.no_save:
+                    logger.warning('Saving is disabled. The ruleset will not be persistent!')
+                else:
+                    logger.info('Saving ruleset...')
+                    fw.save()
+                    fw.service()
+                    logger.info('Ruleset saved!')
     except TimeoutExpired:
         return 1
     except Exception as e:

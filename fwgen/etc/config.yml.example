@@ -15,8 +15,8 @@
 # been applied. The check commands must return exit code 0 or the firewall will
 # rollback the configuration. Shell features are not supported.
 #check_commands:
-#  - ping -c 8.8.8.8
-#  - ssh user@testhost run-port-check
+#  - nc -z -w 2 <autossh_server> 22
+#  - ping -c 2 <host>
 
 # You can override the paths to the commands used in fwgen
 #cmds:

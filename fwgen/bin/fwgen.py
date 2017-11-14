@@ -67,7 +67,9 @@ def _main():
     # Set up logging
     logger = logging.getLogger()
     logger.setLevel(args.log_level.upper())
+    fmt = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
     console = logging.StreamHandler()
+    console.setFormatter(fmt)
     logger.addHandler(console)
 
     try:

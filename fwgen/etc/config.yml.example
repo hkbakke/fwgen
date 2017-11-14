@@ -29,7 +29,6 @@
 #  ip6tables_save: ip6tables-save
 #  ip6tables_restore: ip6tables-restore
 #  ipset: ipset
-#  conntrack: conntrack
 
 # Example ipsets for use in the iptables rules via the set module
 #ipsets:

@@ -15,8 +15,12 @@
 # been applied. The check commands must return exit code 0 or the firewall will
 # rollback the configuration. Shell features are not supported.
 #check_commands:
-#  - nc -z -w 2 <autossh_server> 22
-#  - ping -c 2 -W 2 <host>
+#  # Check if autossh server is reachable for remote access via ssh port forwarding
+#  - nc -z -w 2 autossh_server 22
+#  # Run port test from remote server towards this host
+#  - ssh user@testhost nc -z -w 2 managementip 22
+#  # Check if some host is reachable
+#  - ping -c 2 -W 2 host
 
 # You can override the paths to the commands used in fwgen
 #cmds:

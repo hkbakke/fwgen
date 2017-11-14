@@ -34,6 +34,10 @@ class Ruleset(object):
         self.restore_file = None
         self.ruleset_type = None
 
+    def apply(self, rules):
+        LOGGER.debug("Applying %s rules", self.ruleset_type)
+        self._apply(rules)
+
     def _apply(self, rules):
         data = '%s\n' % '\n'.join(rules)
         p = subprocess.Popen(self.restore_cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -45,11 +49,12 @@ class Ruleset(object):
     def restore(self, path=None):
         path = path or self.restore_file
         LOGGER.debug("Restoring %s rules from '%s'", self.ruleset_type, path)
-        self._restore(path)
+        self.apply(self._get_restore_rules(path))
 
-    def _restore(self, path):
-        with path.open('rb') as f:
-            subprocess.check_call(self.restore_cmd, stdin=f)
+    @staticmethod
+    def _get_restore_rules(path):
+        with path.open('r') as f:
+            return f.readlines()
 
     def save(self, path):
         LOGGER.debug("Saving %s rules to '%s'", self.ruleset_type, path)
@@ -74,10 +79,6 @@ class Ruleset(object):
 
 
 class IptablesCommon(Ruleset):
-    def apply(self, rules):
-        LOGGER.debug("Applying %s rules", self.ruleset_type)
-        self._apply(rules)
-
     def clear(self):
         LOGGER.debug("Clearing %s rules", self.ruleset_type)
         rules = []

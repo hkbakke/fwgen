@@ -248,7 +248,7 @@ class FirewallService(object):
             '[Service]',
             'Type=oneshot',
             'RemainAfterExit=yes',
-            'ExecStart=%s -file "%s"' % (
+            'ExecStart=%s -exist -file "%s"' % (
                 ' '.join(self.ipsets.restore_cmd), self.ipsets.restore_file),
             'ExecStart=%s "%s"' % (
                 ' '.join(self.iptables.restore_cmd), self.iptables.restore_file),

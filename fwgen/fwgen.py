@@ -247,12 +247,14 @@ class FirewallService(object):
             '[Service]',
             'Type=oneshot',
             'RemainAfterExit=yes',
-            'ExecStart=%s -exist -file "%s"' % (
+            'ExecStart=%s -file "%s"' % (
                 ' '.join(self.ipsets.restore_cmd), self.ipsets.restore_file),
             'ExecStart=%s "%s"' % (
                 ' '.join(self.iptables.restore_cmd), self.iptables.restore_file),
             'ExecStart=%s "%s"' % (
                 ' '.join(self.ip6tables.restore_cmd), self.ip6tables.restore_file),
+            'ExecReload=/usr/local/bin/fwgen --restore --no-confirm',
+            'ExecStop=/usr/local/bin/fwgen --clear --no-save --no-confirm',
             '',
             '[Install]',
             'WantedBy=multi-user.target'

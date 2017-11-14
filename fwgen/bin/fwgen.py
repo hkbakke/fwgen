@@ -127,8 +127,8 @@ def _main():
             logger.info('Check commands OK!')
 
             if not args.no_confirm:
-                logger.warning('\nRolling back in %d seconds unless confirmed. Verify '
-                               'that you can establish NEW connections!', args.timeout)
+                logger.warning('Rolling back in %d seconds unless confirmed. Verify that you '
+                               'can establish NEW connections!', args.timeout)
                 message = ("\n-> Press 'Enter' to confirm or 'Ctrl-C' to rollback immediately\n")
                 wait_for_input(message, args.timeout)
 

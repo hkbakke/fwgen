@@ -25,7 +25,7 @@ Advantages of using fwgen:
 - Firewall operations are atomic. It either applies correctly or not, without flushing your existing ruleset, potentially leaving you temporarily exposed.
 - Automatic rollback to previous ruleset if something goes wrong
 - Supports check commands to automatically roll back ruleset if check fails
-- Automatically adapts paths if being run in a network namespace.
+- Automatically adapts paths if being run in a network namespace
 
 Requirements
 ============
@@ -33,7 +33,6 @@ Requirements
 - Python 3 (only tested on 3.4 and later, but might work with earlier versions)
 - PyYAML
 - ipset
-- conntrack (only if you want to flush connections)
 
 Installation
 ============
@@ -41,15 +40,15 @@ Installation
 ::
 
     # Debian / Ubuntu
-    apt install ipset conntrack python3-yaml python3-pip -y
-    pip3 install fwgen
+    apt install ipset python3-yaml python3-pip -y
+    pip3 install fwgen --upgrade
 
 ::
-    
+
     # CentOS 7
     rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-    yum install -y python34-pip conntrack
-    pip3 install fwgen
+    yum install -y python34-pip
+    pip3 install fwgen --upgrade
 
 PyYAML is pulled in as a dependency automatically via pip, but you may get a compiler error if you do not have the correct dependencies installed. It will still work however, just not as fast. I recommend using the distro packaged version if you have it available. In Debian's case that is ``python3-yaml``.
 
@@ -68,8 +67,8 @@ Installing from source
     deactivate  # Unless you only want to install it in your venv
 
     # On you target host
-    apt install ipset conntrack python3-yaml python3-pip
-    pip3 install dist/<build>.whl
+    apt install ipset python3-yaml python3-pip
+    pip3 install dist/<build>.whl --upgrade
 
 Prepare configuration file
 ==========================

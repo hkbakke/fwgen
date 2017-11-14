@@ -296,12 +296,11 @@ class FwGen(object):
                 'ipsets': 'fwgen/rules/ipsets.restore'
             },
             'cmds': {
-                'iptables_save': shutil.which('iptables-save'),
+                'iptables_save': 'iptables-save',
                 'iptables_restore': shutil.which('iptables-restore'),
-                'ip6tables_save': shutil.which('ip6tables-save'),
+                'ip6tables_save': 'ip6tables-save',
                 'ip6tables_restore': shutil.which('ip6tables-restore'),
                 'ipset': shutil.which('ipset'),
-                'conntrack': 'conntrack'
             },
             'systemd_service': {
                 'enable': True,
@@ -448,15 +447,6 @@ class FwGen(object):
                         output.append(rule_parsed)
             output.append('COMMIT')
         return output
-
-    def flush_connections(self):
-        try:
-            cmd = [self.config['cmds']['conntrack'], '-F']
-            subprocess.check_call(cmd, stderr=subprocess.DEVNULL)
-        except FileNotFoundError as e:
-            LOGGER.error('%s. Is conntrack installed?', str(e))
-            LOGGER.warning('Continuing without flushing connection tracking table...')
-            return
 
     def save(self):
         self.iptables.save(self.restore_file['ip'])

@@ -40,8 +40,6 @@ def _main():
     parser.add_argument('--config-json', metavar='JSON', help='JSON formatted config')
     parser.add_argument('--no-save', action='store_true',
                         help='Apply the ruleset but do not make it persistent')
-    parser.add_argument('--flush-connections', action='store_true',
-                        help='Flush all connections after applying ruleset')
     parser.add_argument(
         '--log-level',
         choices=[
@@ -123,11 +121,6 @@ def _main():
                 logger.info('Applying ruleset...')
                 fw.apply()
                 logger.info('Ruleset applied!')
-
-            if args.flush_connections:
-                logger.info('Flushing connection tracking table...')
-                fw.flush_connections()
-                logger.info('Connection tracking table flushed!')
 
             logger.info('Running check commands...')
             fw.check()

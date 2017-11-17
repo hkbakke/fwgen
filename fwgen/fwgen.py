@@ -298,9 +298,9 @@ class FwGen(object):
                 'ipsets': 'fwgen/rules/ipsets.restore'
             },
             'cmds': {
-                'iptables_save': 'iptables-save',
+                'iptables_save': shutil.which('iptables-save'),
                 'iptables_restore': shutil.which('iptables-restore'),
-                'ip6tables_save': 'ip6tables-save',
+                'ip6tables_save': shutil.which('ip6tables-save'),
                 'ip6tables_restore': shutil.which('ip6tables-restore'),
                 'ipset': shutil.which('ipset'),
             },

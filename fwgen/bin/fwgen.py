@@ -7,7 +7,7 @@ import traceback
 from collections import OrderedDict
 from pathlib import Path
 
-from fwgen import fwgen
+from fwgen import fwgen, __version__
 from fwgen.helpers import yaml_load_ordered, ordered_dict_merge, get_etc
 
 
@@ -40,6 +40,7 @@ def _main():
     parser.add_argument('--config-json', metavar='JSON', help='JSON formatted config')
     parser.add_argument('--no-save', action='store_true',
                         help='Apply the ruleset but do not make it persistent')
+    parser.add_argument('--version', action='store_true', help='Show version')
     parser.add_argument(
         '--log-level',
         choices=[
@@ -71,6 +72,10 @@ def _main():
     logger.addHandler(console)
 
     try:
+        if args.version:
+            print('fwgen v%s' % __version__)
+            return 0
+
         if args.create_config_dir is not False:
             configdir = fwgen.ConfigDir(Path(args.create_config_dir))
             configdir.create()

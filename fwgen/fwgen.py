@@ -3,6 +3,7 @@ import subprocess
 import logging
 import shutil
 import filecmp
+import shlex
 from collections import OrderedDict
 from pathlib import Path
 
@@ -520,7 +521,7 @@ class Rollback(FwGen):
         for cmd in self.config['check_commands']:
             LOGGER.debug('Command: %s', cmd)
             try:
-                output = subprocess.check_output(cmd.split(), stderr=subprocess.STDOUT,
+                output = subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT,
                                                  universal_newlines=True).strip()
             except subprocess.CalledProcessError as e:
                 LOGGER.error(e.output)

@@ -242,6 +242,7 @@ class FirewallService(object):
         subprocess.check_call(['systemctl', 'daemon-reload'])
 
     def _get_content(self):
+        fwgen_cmd = shutil.which('fwgen')
         content = [
             '[Unit]',
             'Description=fwgen firewall',
@@ -255,8 +256,8 @@ class FirewallService(object):
                 ' '.join(self.iptables.restore_cmd), self.iptables.restore_file),
             'ExecStart=%s "%s"' % (
                 ' '.join(self.ip6tables.restore_cmd), self.ip6tables.restore_file),
-            'ExecReload=/usr/local/bin/fwgen --restore --no-confirm',
-            'ExecStop=/usr/local/bin/fwgen --clear --no-save --no-confirm',
+            'ExecReload=%s --restore --no-confirm' % fwgen_cmd,
+            'ExecStop=%s --clear --no-save --no-confirm' % fwgen_cmd,
             '',
             '[Install]',
             'WantedBy=multi-user.target'

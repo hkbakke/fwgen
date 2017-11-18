@@ -58,10 +58,10 @@ def run_command(cmd):
                                          universal_newlines=True)
     except subprocess.CalledProcessError as e:
         if e.output:
-            LOGGER.error(e.output.rstrip('\n'))
+            LOGGER.error('\n%s', e.output.rstrip('\n'))
         raise
 
     if output:
-        LOGGER.debug(output.rstrip('\n'))
+        LOGGER.debug('\n%s', output.rstrip('\n'))
 
     return output

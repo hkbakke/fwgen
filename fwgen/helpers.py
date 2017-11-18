@@ -50,3 +50,18 @@ def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict)
         construct_mapping)
 
     return yaml.load(stream, OrderedLoader)
+
+def run_command(cmd):
+    LOGGER.debug('Running command: %s', ' '.join(cmd))
+    try:
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
+                                         universal_newlines=True)
+    except subprocess.CalledProcessError as e:
+        if e.output:
+            LOGGER.error(e.output.rstrip('\n'))
+        raise
+
+    if output:
+        LOGGER.debug(output.rstrip('\n'))
+
+    return output

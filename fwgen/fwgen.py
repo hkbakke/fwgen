@@ -7,7 +7,7 @@ import shlex
 from collections import OrderedDict
 from pathlib import Path
 
-from fwgen.helpers import ordered_dict_merge, get_etc, random_word
+from fwgen.helpers import ordered_dict_merge, get_etc, random_word, run_command
 
 
 LOGGER = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ class Ruleset(object):
         self.restore_file = path
 
     def running(self):
-        output = subprocess.check_output(self.save_cmd, universal_newlines=True)
+        output = run_command(self.save_cmd)
         return output.splitlines()
 
 
@@ -116,7 +116,7 @@ class Ipsets(Ruleset):
         self.ruleset_type = 'ipset'
 
     def list(self):
-        output = subprocess.check_output([self.ipset, 'list', '-name'], universal_newlines=True)
+        output = run_command([self.ipset, 'list', '-name'])
         return output.splitlines()
 
     def clear(self):
@@ -193,14 +193,7 @@ class FirewallService(object):
 
     def _enable(self):
         cmd = ['systemctl', 'enable', self.unitfile.name]
-        try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
-                                             universal_newlines=True).strip()
-        except subprocess.CalledProcessError as e:
-            LOGGER.error(e.output)
-            raise
-        if output:
-            LOGGER.debug(output)
+        run_command(cmd)
 
     def enable(self):
         self.create()
@@ -209,14 +202,7 @@ class FirewallService(object):
 
     def _disable(self):
         cmd = ['systemctl', 'disable', self.unitfile.name]
-        try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
-                                             universal_newlines=True).strip()
-        except subprocess.CalledProcessError as e:
-            LOGGER.error(e.output)
-            raise
-        if output:
-            LOGGER.debug(output)
+        run_command(cmd)
 
     def disable(self):
         if self.unitfile.exists():
@@ -230,16 +216,16 @@ class FirewallService(object):
 
     def start(self):
         LOGGER.debug("Starting service '%s'", self.name)
-        subprocess.check_call(['systemctl', 'start', self.unitfile.name])
+        run_command(['systemctl', 'start', self.unitfile.name])
 
     def stop(self):
         LOGGER.debug("Stopping service '%s'", self.name)
-        subprocess.check_call(['systemctl', 'stop', self.unitfile.name])
+        run_command(['systemctl', 'stop', self.unitfile.name])
 
     @staticmethod
     def reload():
         LOGGER.debug('Reloading systemd service configuration')
-        subprocess.check_call(['systemctl', 'daemon-reload'])
+        run_command(['systemctl', 'daemon-reload'])
 
     def _get_content(self):
         fwgen_cmd = shutil.which('fwgen')
@@ -520,15 +506,7 @@ class Rollback(FwGen):
 
     def check(self):
         for cmd in self.config['check_commands']:
-            LOGGER.debug('Command: %s', cmd)
-            try:
-                output = subprocess.check_output(shlex.split(cmd), stderr=subprocess.STDOUT,
-                                                 universal_newlines=True).strip()
-            except subprocess.CalledProcessError as e:
-                LOGGER.error(e.output)
-                raise
-            if output:
-                LOGGER.debug(output)
+            run_command(shlex.split(cmd))
 
     def rollback(self):
         self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

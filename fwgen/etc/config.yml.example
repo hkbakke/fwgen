@@ -69,31 +69,30 @@
 #    INPUT: ACCEPT
 #    FORWARD: ACCEPT
 #    OUTPUT: ACCEPT
-#
+
 # Create additonal chains here
 #helper_chains:
 #  filter:
 #    LOG_REJECT:
 #      - '-j LOG --log-level warning --log-prefix "IPTABLES_REJECT: "'
 #      - -j REJECT
-#
-#rules:
-#  # In some very rare cases you may want to put some rules even before the default
-#  # rules. This is useful if you want to do some processing on packets that are
-#  # part of an established session.
-#  pre_default:
-#    filter:
-#      FORWARD:
-#        - ...
-#
-#  # You can add rules that are processed before zone dispatching here.
-#  # These will be hit for all interfaces, although they are still processed after
-#  # the default rules.
-#  pre_zone:
-#    raw:
+
+# In some very rare cases you may want to put some rules even before the default
+# rules. This is useful if you want to do some processing on packets that are
+# part of an established session.
+#pre_default:
+#  filter:
+#    FORWARD:
+#      - ...
+
+# You can add rules that are processed before zone dispatching here.
+# These will be hit for all interfaces, although they are still processed after
+# the default rules.
+#pre_zone:
+#  raw:
+#    PREROUTING:
 #      # Add TFTP conntrack helper (new behaviour as of kernel 4.7)
-#      PREROUTING:
-#        - -4 -p udp -d 10.0.0.200 --dport 69 -j CT --helper tftp
+#      - -4 -p udp -d 10.0.0.200 --dport 69 -j CT --helper tftp
 
 #
 # Complete minimal example for a classic two interface gateway with NAT
@@ -190,13 +189,12 @@
 # is executed without being configured after '--create-config-dir' has been run
 #
 
-rules:
-  pre_zone:
-    filter:
-      INPUT:
-        - -j ACCEPT
-      OUTPUT:
-        - -j ACCEPT
+pre_zone:
+  filter:
+    INPUT:
+      - -j ACCEPT
+    OUTPUT:
+      - -j ACCEPT
 
 # ---- initial config end ----
 

@@ -320,6 +320,10 @@ class FwGen(object):
             raise DeprecationError("The dictionary 'global' is no longer valid in "
                                    "v0.10.0 and newer configurations. Move existing "
                                    "contents to the top level in the configuration.")
+        if self.config.get('rules'):
+            raise DeprecationError("The dictionary 'rules' is no longer valid in "
+                                   "v0.11.0 and newer configurations. Move existing "
+                                   "contents to the top level in the configuration.")
 
     @staticmethod
     def _get_path(path):
@@ -360,12 +364,7 @@ class FwGen(object):
     def _get_global_rules(self):
         """ Return the rules from the global ruleset hooks in correct order """
         for ruleset in ['pre_default', 'default', 'pre_zone']:
-            rules = {}
-            try:
-                rules = self.config['rules'][ruleset]
-            except KeyError:
-                pass
-
+            rules = self.config.get(ruleset, {})
             for rule in self._get_rules(rules):
                 yield rule
 

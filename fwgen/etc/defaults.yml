@@ -23,14 +23,13 @@ helper_chains:
       - '-j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
       - -j CUSTOM_REJECT
 
-rules:
-  default:
-    filter:
-      INPUT:
-        - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-        - -i lo -j ACCEPT
-      FORWARD:
-        - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-      OUTPUT:
-        - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-        - -o lo -j ACCEPT
+default:
+  filter:
+    INPUT:
+      - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      - -i lo -j ACCEPT
+    FORWARD:
+      - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+    OUTPUT:
+      - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      - -o lo -j ACCEPT

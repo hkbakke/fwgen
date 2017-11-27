@@ -79,13 +79,11 @@ class TestFwGen(object):
 
     def test_get_policy_rules(self):
         config = {
-            'global': {
-                'policy': {
-                    'filter': {
-                        'INPUT': 'DROP',
-                        'OUTPUT': 'DROP'
-                    },
-                }
+            'policy': {
+                'filter': {
+                    'INPUT': 'DROP',
+                    'OUTPUT': 'DROP'
+                },
             }
         }
         fw = fwgen.FwGen(config)
@@ -158,11 +156,11 @@ class TestFwGen(object):
 
     def test_get_helper_chains(self):
         config = OrderedDefaultDict()
-        config['global']['helper_chains']['filter']['CUSTOM_REJECT'] = [
+        config['helper_chains']['filter']['CUSTOM_REJECT'] = [
             '-p tcp -j REJECT --reject-with tcp-reset',
             '-j REJECT'
         ]
-        config['global']['helper_chains']['filter']['LOG_DROP'] = [
+        config['helper_chains']['filter']['LOG_DROP'] = [
             '-j LOG --log-level warning --log-prefix "IPTABLES_DROP: "',
             '-j DROP'
         ]

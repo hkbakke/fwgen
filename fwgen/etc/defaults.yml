@@ -7,6 +7,7 @@ policy:
     INPUT: DROP
     FORWARD: DROP
     OUTPUT: DROP
+
 helper_chains:
   filter:
     CUSTOM_REJECT:
@@ -21,6 +22,7 @@ helper_chains:
     LOG_REJECT:
       - '-j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
       - -j CUSTOM_REJECT
+
 rules:
   default:
     filter:

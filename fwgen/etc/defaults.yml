@@ -2,34 +2,33 @@
 # Unless you have very specific reasons you should not change this file
 #
 
-global:
-  policy:
+policy:
+  filter:
+    INPUT: DROP
+    FORWARD: DROP
+    OUTPUT: DROP
+helper_chains:
+  filter:
+    CUSTOM_REJECT:
+      - -p tcp -j REJECT --reject-with tcp-reset
+      - -j REJECT
+    LOG_ACCEPT:
+      - '-j LOG --log-level info --log-prefix "FIREWALL->ACCEPT: "'
+      - -j ACCEPT
+    LOG_DROP:
+      - '-j LOG --log-level info --log-prefix "FIREWALL->DROP: "'
+      - -j DROP
+    LOG_REJECT:
+      - '-j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
+      - -j CUSTOM_REJECT
+rules:
+  default:
     filter:
-      INPUT: DROP
-      FORWARD: DROP
-      OUTPUT: DROP
-  helper_chains:
-    filter:
-      CUSTOM_REJECT:
-        - -p tcp -j REJECT --reject-with tcp-reset
-        - -j REJECT
-      LOG_ACCEPT:
-        - '-j LOG --log-level info --log-prefix "FIREWALL->ACCEPT: "'
-        - -j ACCEPT
-      LOG_DROP:
-        - '-j LOG --log-level info --log-prefix "FIREWALL->DROP: "'
-        - -j DROP
-      LOG_REJECT:
-        - '-j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
-        - -j CUSTOM_REJECT
-  rules:
-    default:
-      filter:
-        INPUT:
-          - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-          - -i lo -j ACCEPT
-        FORWARD:
-          - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-        OUTPUT:
-          - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-          - -o lo -j ACCEPT
+      INPUT:
+        - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+        - -i lo -j ACCEPT
+      FORWARD:
+        - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+      OUTPUT:
+        - -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+        - -o lo -j ACCEPT

@@ -28,6 +28,10 @@ class RulesetError(Exception):
     pass
 
 
+class DeprecationError(Exception):
+    pass
+
+
 class Ruleset(object):
     def __init__(self):
         self.save_cmd = None
@@ -297,6 +301,7 @@ class FwGen(object):
             'check_commands': []
         }
         self.config = ordered_dict_merge(config, defaults)
+        self._deprecation_check()
         self.iptables = Iptables(self.config['cmds']['iptables_save'],
                                  self.config['cmds']['iptables_restore'])
         self.ip6tables = Ip6tables(self.config['cmds']['ip6tables_save'],
@@ -309,6 +314,12 @@ class FwGen(object):
         }
         self.zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
         self.variable_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
+
+    def _deprecation_check(self):
+        if self.config.get('global'):
+            raise DeprecationError("The dictionary 'global' is no longer valid in "
+                                   "v0.10.0 and newer configurations. Move existing "
+                                   "contents to the top level in the configuration.")
 
     @staticmethod
     def _get_path(path):
@@ -333,7 +344,7 @@ class FwGen(object):
             for chain in chains:
                 policy = 'ACCEPT'
                 try:
-                    policy = self.config['global']['policy'][table][chain]
+                    policy = self.config['policy'][table][chain]
                 except KeyError:
                     pass
                 yield (table, ':%s %s' % (chain, policy))
@@ -351,7 +362,7 @@ class FwGen(object):
         for ruleset in ['pre_default', 'default', 'pre_zone']:
             rules = {}
             try:
-                rules = self.config['global']['rules'][ruleset]
+                rules = self.config['rules'][ruleset]
             except KeyError:
                 pass
 
@@ -361,7 +372,7 @@ class FwGen(object):
     def _get_helper_chains(self):
         rules = {}
         try:
-            rules = self.config['global']['helper_chains']
+            rules = self.config['helper_chains']
         except KeyError:
             pass
 

@@ -14,13 +14,13 @@ helper_chains:
       - -p tcp -j REJECT --reject-with tcp-reset
       - -j REJECT
     LOG_ACCEPT:
-      - '-j LOG --log-level info --log-prefix "FIREWALL->ACCEPT: "'
+      - '-m hashlimit --hashlimit-upto 3/minute --hashlimit-burst 5 --hashlimit-mode srcip,dstip,dstport --hashlimit-name logged_accepts -j LOG --log-level info --log-prefix "FIREWALL->ACCEPT: "'
       - -j ACCEPT
     LOG_DROP:
-      - '-j LOG --log-level info --log-prefix "FIREWALL->DROP: "'
+      - '-m hashlimit --hashlimit-upto 3/minute --hashlimit-burst 5 --hashlimit-mode srcip,dstip,dstport --hashlimit-name logged_drops -j LOG --log-level info --log-prefix "FIREWALL->DROP: "'
       - -j DROP
     LOG_REJECT:
-      - '-j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
+      - '-m hashlimit --hashlimit-upto 3/minute --hashlimit-burst 5 --hashlimit-mode srcip,dstip,dstport --hashlimit-name logged_rejects -j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
       - -j CUSTOM_REJECT
 
 default:

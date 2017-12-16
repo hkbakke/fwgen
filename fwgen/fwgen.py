@@ -353,11 +353,16 @@ class FwGen(object):
                     pass
                 yield (table, ':%s %s' % (chain, policy))
 
+    def _get_zone_id(self, zone):
+        return list(self.config.get('zones', {}).keys()).index(zone)
+
     def _get_zone_rules(self):
         for zone, params in self.config.get('zones', {}).items():
+            zone_id = self._get_zone_id(zone)
+            LOGGER.debug("Zone ID for zone '%s': %d", zone, zone_id)
             for table, chains in params.get('rules', {}).items():
                 for chain, chain_rules in chains.items():
-                    zone_chain = '%s_%s' % (zone, chain)
+                    zone_chain = 'ZONE%d_%s' % (zone_id, chain)
                     for rule in chain_rules:
                         yield (table, '-A %s %s' % (zone_chain, rule))
 
@@ -395,9 +400,10 @@ class FwGen(object):
 
     def _get_zone_dispatchers(self):
         for zone, params in self.config.get('zones', {}).items():
+            zone_id = self._get_zone_id(zone)
             for table, chains in params.get('rules', {}).items():
                 for chain in chains:
-                    dispatcher_chain = '%s_%s' % (zone, chain)
+                    dispatcher_chain = 'ZONE%d_%s' % (zone_id, chain)
                     yield self._get_new_chain_rule(table, dispatcher_chain)
 
                     if chain in ['PREROUTING', 'INPUT', 'FORWARD']:

@@ -298,7 +298,11 @@ class FwGen(object):
                 'enable': True,
                 'name': 'fwgen'
             },
-            'check_commands': []
+            'check_commands': [],
+            'external_chains': {
+                'iptables': {},
+                'ip6tables': {}
+            }
         }
         self.config = ordered_dict_merge(config, defaults)
         self._deprecation_check()
@@ -382,7 +386,7 @@ class FwGen(object):
 
         for table, chains in rules.items():
             for chain in chains:
-                yield self._get_new_chain_rule(table, chain)
+                yield (table, self._new_chain(chain))
 
         for rule in self._get_rules(rules):
             yield rule
@@ -395,8 +399,8 @@ class FwGen(object):
                     yield (table, '-A %s %s' % (chain, rule))
 
     @staticmethod
-    def _get_new_chain_rule(table, chain):
-        return (table, ':%s -' % chain)
+    def _new_chain(chain):
+        return ':%s -' % chain
 
     def _get_zone_dispatchers(self):
         for zone, params in self.config.get('zones', {}).items():
@@ -404,7 +408,7 @@ class FwGen(object):
             for table, chains in params.get('rules', {}).items():
                 for chain in chains:
                     dispatcher_chain = 'ZONE%d_%s' % (zone_id, chain)
-                    yield self._get_new_chain_rule(table, dispatcher_chain)
+                    yield (table, self._new_chain(dispatcher_chain))
 
                     if chain in ['PREROUTING', 'INPUT', 'FORWARD']:
                         yield (table, '-A %s -i %%{%s} -j %s' % (chain, zone, dispatcher_chain))
@@ -452,6 +456,36 @@ class FwGen(object):
             output.append('COMMIT')
         return output
 
+    def _get_chain_rules(self, table, chain, rules):
+        chain_rules = []
+        rule_table = None
+
+        for rule in rules:
+            if rule.startswith('*'):
+                rule_table = rule.split('*', 1)[1]
+
+            if rule_table != table:
+                continue
+
+            if rule.startswith('-A %s ' % chain):
+                chain_rules.append((table, rule))
+
+        if chain_rules:
+            chain_rules.insert(0, (table, self._new_chain(chain)))
+
+        return chain_rules
+
+    def _get_external_rules(self):
+        for table, chains in self.config['external_chains']['iptables'].items():
+            for chain in chains:
+                for rule in self._get_chain_rules(table, chain, self.iptables.running()):
+                    yield rule
+
+        for table, chains in self.config['external_chains']['ip6tables'].items():
+            for chain in chains:
+                for rule in self._get_chain_rules(table, chain, self.ip6tables.running()):
+                    yield rule
+
     def save(self):
         self.iptables.save(self.restore_file['ip'])
         self.ip6tables.save(self.restore_file['ip6'])
@@ -479,6 +513,7 @@ class FwGen(object):
     def apply(self):
         rules = []
         rules.extend(self._get_policy_rules())
+        rules.extend(self._get_external_rules())
         rules.extend(self._get_helper_chains())
         rules.extend(self._get_global_rules())
         rules.extend(self._get_zone_dispatchers())

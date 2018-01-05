@@ -77,16 +77,6 @@
 #      - '-j LOG --log-level warning --log-prefix "IPTABLES_REJECT: "'
 #      - -j REJECT
 
-# If you have chains that are externally managed, list them here to keep their contents when
-# fwgen applies the ruleset. The chains can not be builtin chains or chains already used or
-# configured by fwgen.
-#external_chains:
-#  iptables:
-#    filter:
-#      - f2b-sshd
-#  ip6tables:
-#    ...
-
 # In some very rare cases you may want to put some rules even before the default
 # rules. This is useful if you want to do some processing on packets that are
 # part of an established session.

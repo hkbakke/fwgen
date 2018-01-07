@@ -209,7 +209,7 @@
 #          - -4 -p icmp --imcp-type echo-request -j ACCEPT
 #          - -6 -p icmpv6 --icmpv6-type echo-request -j ACCEPT
 #          - -6 -p icmpv6 --icmpv6-type neighbor-solicitation -j ACCEPT
-#					 - -6 -p icmpv6 --icmpv6-type neighbor-advertisement -j ACCEPT
+#          - -6 -p icmpv6 --icmpv6-type neighbor-advertisement -j ACCEPT
 #          - -6 -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT
 #          - -j CUSTOM_REJECT
 #        FORWARD:

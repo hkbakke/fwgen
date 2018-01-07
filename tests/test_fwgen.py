@@ -1,4 +1,3 @@
-import pytest
 from collections import OrderedDict
 
 from fwgen import fwgen
@@ -54,28 +53,98 @@ class TestFwGen(object):
         result = [i for i in fw._expand_zones(rule)]
         assert result == rules_expanded
 
-    def test_variable_substitution(self):
+    def test_var_expansion_v4(self):
         config = {
             'variables': {
-                'host1': '10.0.0.10',
-                'host2': '192.168.0.10'
+                'host_v4': '10.0.0.10',
+                'host2_v4': '192.168.0.10'
             }
         }
         fw = fwgen.FwGen(config)
-        rule = '-A PREROUTING -s ${host1} -j DNAT --to-destination ${host2}'
-        rule_substituted = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
+        rule = '-A PREROUTING -s ${host_v4} -j DNAT --to-destination ${host2_v4}'
+        rules_expanded = ['-4 -A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = fw._substitute_variables(rule)
-        assert result == rule_substituted
+        result = [i for i in fw._expand_vars(rule)]
+        assert result == rules_expanded
 
-    def test_no_variable_substitution(self):
+    def test_var_expansion_v4_as_v4(self):
+        config = {
+            'variables': {
+                'host_v4': '10.0.0.10',
+                'host2_v4': '192.168.0.10'
+            }
+        }
+        fw = fwgen.FwGen(config)
+        rule = '-4 -A PREROUTING -s ${host_v4} -j DNAT --to-destination ${host2_v4}'
+        rules_expanded = ['-4 -A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
+
+        result = [i for i in fw._expand_vars(rule)]
+        assert result == rules_expanded
+
+    def test_var_expansion_v6(self):
+        config = {
+            'variables': {
+                'host_v6': 'fd32::1',
+                'net_v6': 'fd33::/64'
+            }
+        }
+        fw = fwgen.FwGen(config)
+        rule = '-A INPUT -s ${host_v6} -d ${net_v6} -j ACCEPT'
+        rules_expanded = ['-6 -A INPUT -s fd32::1 -d fd33::/64 -j ACCEPT']
+
+        result = [i for i in fw._expand_vars(rule)]
+        assert result == rules_expanded
+
+    def test_var_expansion_v6_as_v6(self):
+        config = {
+            'variables': {
+                'host_v6': 'fd32::1',
+                'net_v6': 'fd33::/64'
+            }
+        }
+        fw = fwgen.FwGen(config)
+        rule = '-6 -A INPUT -s ${host_v6} -d ${net_v6} -j ACCEPT'
+        rules_expanded = ['-6 -A INPUT -s fd32::1 -d fd33::/64 -j ACCEPT']
+
+        result = [i for i in fw._expand_vars(rule)]
+        assert result == rules_expanded
+
+    def test_list_var_expansion(self):
+        config = {
+            'variables': {
+                'hosts1': [
+                    '10.0.0.1',
+                    'fd32::1',
+                    '10.0.0.3'
+                ],
+                'hosts2': [
+                    'fd44::1',
+                    '192.168.0.1',
+                    '192.168.0.2',
+                ]
+            }
+        }
+        fw = fwgen.FwGen(config)
+        rule = '-A FORWARD -s ${hosts1} -d ${hosts2} -j ACCEPT'
+        rules_expanded = [
+            '-4 -A FORWARD -s 10.0.0.1 -d 192.168.0.1 -j ACCEPT',
+            '-4 -A FORWARD -s 10.0.0.1 -d 192.168.0.2 -j ACCEPT',
+            '-6 -A FORWARD -s fd32::1 -d fd44::1 -j ACCEPT',
+            '-4 -A FORWARD -s 10.0.0.3 -d 192.168.0.1 -j ACCEPT',
+            '-4 -A FORWARD -s 10.0.0.3 -d 192.168.0.2 -j ACCEPT',
+            ]
+
+        result = [i for i in fw._expand_vars(rule)]
+        assert result == rules_expanded
+
+    def test_no_var_expansion(self):
         config = {}
         fw = fwgen.FwGen(config)
         rule = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
-        rule_substituted = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
+        rule_expanded = ['-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = fw._substitute_variables(rule)
-        assert result == rule_substituted
+        result = [i for i in fw._expand_vars(rule)]
+        assert result == rule_expanded
 
     def test_get_policy_rules(self):
         config = {
@@ -108,7 +177,7 @@ class TestFwGen(object):
         ]
         assert sorted([i for i in fw._get_policy_rules()]) == sorted(policy_rules)
 
-    def test_get_rules(rules):
+    def test_get_rules(self):
         rules = OrderedDefaultDict()
         rules['filter']['INPUT'] = [
             '-p tcp --dport 22 -j ACCEPT',
@@ -175,6 +244,6 @@ class TestFwGen(object):
         ]
         assert [i for i in fw._get_helper_chains()] == rule_list
 
-    def test_get_new_chain_rule(self):
+    def test_new_chain(self):
         fw = fwgen.FwGen({})
-        assert fw._get_new_chain_rule('filter', 'LOG_REJECT') == ('filter', ':LOG_REJECT -')
+        assert fw._new_chain('LOG_REJECT') == ':LOG_REJECT -'

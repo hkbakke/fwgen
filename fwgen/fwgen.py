@@ -4,6 +4,7 @@ import logging
 import shutil
 import filecmp
 import shlex
+import ipaddress
 from collections import OrderedDict
 from pathlib import Path
 
@@ -340,7 +341,7 @@ class FwGen(object):
             create_cmd.append(params.get('options', None))
             output.append(' '.join([i for i in create_cmd if i]))
             for entry in params['entries']:
-                output.append(self._substitute_variables('add %s %s' % (ipset, entry)))
+                output.extend(self._expand_vars('add %s %s' % (ipset, entry), ruletype='ipset'))
         return output
 
     def _get_policy_rules(self):
@@ -415,7 +416,6 @@ class FwGen(object):
 
     def _expand_zones(self, rule):
         match = re.search(self.zone_pattern, rule)
-
         if match:
             zone = match.group(2)
 
@@ -427,19 +427,72 @@ class FwGen(object):
         else:
             yield rule
 
-    def _substitute_variables(self, string):
+    @staticmethod
+    def _has_option(rule, option):
+        if (rule.startswith('%s ' % option)
+                or ' %s ' % option in rule
+                or rule.endswith(' %s' % option)):
+            return True
+        return False
+
+    def _is_ipv4_rule(self, rule):
+        return bool(self._has_option(rule, '-4'))
+
+    def _is_ipv6_rule(self, rule):
+        return bool(self._has_option(rule, '-6'))
+
+    @staticmethod
+    def _is_ipv4_addr(string):
+        try:
+            ipaddress.IPv4Network(string)
+            return True
+        except ipaddress.AddressValueError:
+            return False
+
+    @staticmethod
+    def _is_ipv6_addr(string):
+        try:
+            ipaddress.IPv6Network(string)
+            return True
+        except ipaddress.AddressValueError:
+            return False
+
+    def _expand_vars(self, string, ruletype='iptables'):
         match = re.search(self.variable_pattern, string)
         if match:
-            variable = match.group(2)
-            value = self.config['variables'][variable]
-            result = '%s%s%s' % (match.group(1), value, match.group(3))
-            return self._substitute_variables(result)
-        return string
+            var = match.group(2)
+            values = self.config['variables'][var]
+
+            if not isinstance(values, list):
+                values = [values]
+
+            for value in values:
+                string_expanded = '%s%s%s' % (match.group(1), value, match.group(3))
+
+                # Only try to be smart if the rule is not already tagged as a IPv4 or IPv6 rule
+                if ruletype == 'iptables':
+                    if self._is_ipv4_addr(value):
+                        if self._is_ipv6_rule(string_expanded):
+                            continue
+
+                        if not self._is_ipv4_rule(string_expanded):
+                            string_expanded = '-4 %s' % string_expanded
+                    elif self._is_ipv6_addr(value):
+                        if self._is_ipv4_rule(string_expanded):
+                            continue
+
+                        if not self._is_ipv6_rule(string_expanded):
+                            string_expanded = '-6 %s' % string_expanded
+
+                for string_ in self._expand_vars(string_expanded):
+                    yield string_
+        else:
+            yield string
 
     def _parse_rule(self, rule):
-        rule = self._substitute_variables(rule)
-        for rule_expanded in self._expand_zones(rule):
-            yield rule_expanded
+        for rule_ in self._expand_vars(rule):
+            for rule_expanded in self._expand_zones(rule_):
+                yield rule_expanded
 
     def _output_rules(self, rules):
         output = []

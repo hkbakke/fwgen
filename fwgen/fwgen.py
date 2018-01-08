@@ -105,7 +105,7 @@ class Iptables(IptablesCommon):
 
 
 class Ip6tables(IptablesCommon):
-    def __init__(self, ip6tables_save='iptables-save', ip6tables_restore='iptables-restore'):
+    def __init__(self, ip6tables_save='ip6tables-save', ip6tables_restore='ip6tables-restore'):
         super().__init__()
         self.save_cmd = [ip6tables_save]
         self.restore_cmd = [ip6tables_restore]
@@ -293,7 +293,7 @@ class FwGen(object):
                 'iptables_restore': shutil.which('iptables-restore'),
                 'ip6tables_save': shutil.which('ip6tables-save'),
                 'ip6tables_restore': shutil.which('ip6tables-restore'),
-                'ipset': shutil.which('ipset'),
+                'ipset': shutil.which('ipset')
             },
             'systemd_service': {
                 'enable': True,

@@ -53,9 +53,9 @@ class TestFwGen(object):
         result = [i for i in fw._expand_zones(rule)]
         assert result == rules_expanded
 
-    def test_var_expansion_v4(self):
+    def test_object_expansion_v4(self):
         config = {
-            'variables': {
+            'objects': {
                 'host_v4': '10.0.0.10',
                 'host2_v4': '192.168.0.10'
             }
@@ -64,12 +64,12 @@ class TestFwGen(object):
         rule = '-A PREROUTING -s ${host_v4} -j DNAT --to-destination ${host2_v4}'
         rules_expanded = ['-4 -A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = [i for i in fw._expand_vars(rule)]
+        result = [i for i in fw._expand_objects(rule)]
         assert result == rules_expanded
 
-    def test_var_expansion_v4_as_v4(self):
+    def test_object_expansion_v4_as_v4(self):
         config = {
-            'variables': {
+            'objects': {
                 'host_v4': '10.0.0.10',
                 'host2_v4': '192.168.0.10'
             }
@@ -78,12 +78,12 @@ class TestFwGen(object):
         rule = '-4 -A PREROUTING -s ${host_v4} -j DNAT --to-destination ${host2_v4}'
         rules_expanded = ['-4 -A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = [i for i in fw._expand_vars(rule)]
+        result = [i for i in fw._expand_objects(rule)]
         assert result == rules_expanded
 
-    def test_var_expansion_v6(self):
+    def test_object_expansion_v6(self):
         config = {
-            'variables': {
+            'objects': {
                 'host_v6': 'fd32::1',
                 'net_v6': 'fd33::/64'
             }
@@ -92,12 +92,12 @@ class TestFwGen(object):
         rule = '-A INPUT -s ${host_v6} -d ${net_v6} -j ACCEPT'
         rules_expanded = ['-6 -A INPUT -s fd32::1 -d fd33::/64 -j ACCEPT']
 
-        result = [i for i in fw._expand_vars(rule)]
+        result = [i for i in fw._expand_objects(rule)]
         assert result == rules_expanded
 
-    def test_var_expansion_v6_as_v6(self):
+    def test_object_expansion_v6_as_v6(self):
         config = {
-            'variables': {
+            'objects': {
                 'host_v6': 'fd32::1',
                 'net_v6': 'fd33::/64'
             }
@@ -106,12 +106,12 @@ class TestFwGen(object):
         rule = '-6 -A INPUT -s ${host_v6} -d ${net_v6} -j ACCEPT'
         rules_expanded = ['-6 -A INPUT -s fd32::1 -d fd33::/64 -j ACCEPT']
 
-        result = [i for i in fw._expand_vars(rule)]
+        result = [i for i in fw._expand_objects(rule)]
         assert result == rules_expanded
 
-    def test_list_var_expansion(self):
+    def test_list_object_expansion(self):
         config = {
-            'variables': {
+            'objects': {
                 'hosts1': [
                     '10.0.0.1',
                     'fd32::1',
@@ -134,16 +134,16 @@ class TestFwGen(object):
             '-4 -A FORWARD -s 10.0.0.3 -d 192.168.0.2 -j ACCEPT',
             ]
 
-        result = [i for i in fw._expand_vars(rule)]
+        result = [i for i in fw._expand_objects(rule)]
         assert result == rules_expanded
 
-    def test_no_var_expansion(self):
+    def test_no_object_expansion(self):
         config = {}
         fw = fwgen.FwGen(config)
         rule = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
         rule_expanded = ['-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = [i for i in fw._expand_vars(rule)]
+        result = [i for i in fw._expand_objects(rule)]
         assert result == rule_expanded
 
     def test_get_policy_rules(self):

@@ -314,7 +314,7 @@ class FwGen(object):
             'ipset': self._get_path(Path(self.config['restore_files']['ipsets']))
         }
         self.zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
-        self.variable_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
+        self.object_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
 
     def _deprecation_check(self):
         if self.config.get('global'):
@@ -325,6 +325,9 @@ class FwGen(object):
             raise DeprecationError("The dictionary 'rules' is no longer valid in "
                                    "v0.11.0 and newer configurations. Move existing "
                                    "contents to the top level in the configuration.")
+        if self.config.get('variables'):
+            raise DeprecationError("The dictionary 'variables' is renamed to 'objects'"
+                                   " in v0.14.0 and newer configurations.")
 
     @staticmethod
     def _get_path(path):
@@ -341,7 +344,7 @@ class FwGen(object):
             create_cmd.append(params.get('options', None))
             output.append(' '.join([i for i in create_cmd if i]))
             for entry in params['entries']:
-                output.extend(self._expand_vars('add %s %s' % (ipset, entry), ruletype='ipset'))
+                output.extend(self._expand_objects('add %s %s' % (ipset, entry), ruletype='ipset'))
         return output
 
     def _get_policy_rules(self):
@@ -457,11 +460,10 @@ class FwGen(object):
         except ipaddress.AddressValueError:
             return False
 
-    def _expand_vars(self, string, ruletype='iptables'):
-        match = re.search(self.variable_pattern, string)
+    def _expand_objects(self, string, ruletype='iptables'):
+        match = re.search(self.object_pattern, string)
         if match:
-            var = match.group(2)
-            values = self.config['variables'][var]
+            values = self.config['objects'][match.group(2)]
 
             if not isinstance(values, list):
                 values = [values]
@@ -484,13 +486,13 @@ class FwGen(object):
                         if not self._is_ipv6_rule(string_expanded):
                             string_expanded = '-6 %s' % string_expanded
 
-                for string_ in self._expand_vars(string_expanded):
+                for string_ in self._expand_objects(string_expanded):
                     yield string_
         else:
             yield string
 
     def _parse_rule(self, rule):
-        for rule_ in self._expand_vars(rule):
+        for rule_ in self._expand_objects(rule):
             for rule_expanded in self._expand_zones(rule_):
                 yield rule_expanded
 

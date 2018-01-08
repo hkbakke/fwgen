@@ -23,7 +23,7 @@ helper_chains:
       - '-m hashlimit --hashlimit-upto 3/minute --hashlimit-burst 5 --hashlimit-mode srcip,dstip,dstport --hashlimit-name logged_rejects -j LOG --log-level info --log-prefix "FIREWALL->REJECT: "'
       - -j CUSTOM_REJECT
 
-variables:
+objects:
   tcp+udp:
     - tcp
     - udp

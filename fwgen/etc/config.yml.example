@@ -58,23 +58,21 @@
 
 # Rules are applied both to iptables and ip6tables. Use '-4' or '-6' in the rule
 # entry to indicate family if rule are family specific. This is documented in
-# the ip(6)tables manual. However, only family specific rules are finally stored
-# to the restore files. However, it is normally much easier to use variables instead
-# to let fwgen do this automatically.
+# the ip(6)tables manual. Only family specific rules are finally stored
+# to the restore files. However, you objects are normally preferred to doing this
+# manually, as the handle this automatically.
 
-# variables are very useful if utilized correctly. You can use them in your ruleset
-# using '${variable}'. They can be used for places where ipsets are overkill or
-# can't be used or to simplify IPv4/IPv6 handling.
-# If the variable value is recognized as either an IPv4 or IPv6 address the
+# Objects are very useful if utilized correctly. You can use them in your ruleset
+# using '${object}'.
+# If the object value is recognized as either an IPv4 or IPv6 address the
 # iptable rules will be automatically tagged with '-4' or '-6' unless you have manually
-# tagged it already. If you have a list as value you can mix IPv4 and IPv6 addresses
-# in multiple variables in multiple places in a iptables rule and fwgen will
-# put the valid address combination into either IPv4 or IPv6 automatically.
-# Another useful property is to create multiprotocol variables, e.g. to be able to write a
+# tagged it already. If you list a mix IPv4 and IPv6 addresses fwgen will
+# put the valid address combinations into either IPv4 or IPv6 automatically.
+# Another use case is to create multiprotocol objects, e.g. to be able to write a
 # single rule for both udp and tcp.
 # List values will always result in the rule being expanded into multiple rules
 # (or ipset entries) until the list is exhausted.
-#variables:
+#objects:
 #  # This one is available by default, so you do not need to define it.
 #  tcp+udp:
 #    - tcp
@@ -90,13 +88,13 @@
 #    - LOG
 #    - ACCEPT
 #
-#  # You can also just write a string if you only have one value
+#  # If you only have one value you can set it withouth using the list notation
 #  test: 10.0.1.2
 #
 #  Example rule:
 #    - -s ${syslog} -d ${dns_server} -p ${tcp+udp} --dport 514 -j ${log_accept}
 #
-#  Which equals these manually defined rules if you do not use variables:
+#  Which equals these manually defined rules if you do not use objects:
 #    - -4 -s 10.0.10.10 -d 10.0.1.2 -p tcp --dport 514 -j LOG
 #    - -4 -s 10.0.10.10 -d 10.0.1.2 -p tcp --dport 514 -j ACCEPT
 #    - -4 -s 10.0.10.10 -d 10.0.1.2 -p udp --dport 514 -j LOG
@@ -174,7 +172,7 @@
 # you would use interface names in native iptables to automatically generate the
 # needed rules.
 
-#variables:
+#objects:
 #  web_server: 10.0.0.10
 
 #zones:

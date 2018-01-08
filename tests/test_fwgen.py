@@ -81,6 +81,22 @@ class TestFwGen(object):
         result = [i for i in fw._expand_objects(rule)]
         assert result == rules_expanded
 
+    def test_object_expansion_v4_only(self):
+        config = {
+            'objects': {
+                'host': [
+                    '10.0.0.10',
+                    'fd33::10'
+                 ]
+            }
+        }
+        fw = fwgen.FwGen(config)
+        rule = '-4 -A INPUT -s ${host} -j ACCEPT'
+        rules_expanded = ['-4 -A INPUT -s 10.0.0.10 -j ACCEPT']
+
+        result = [i for i in fw._expand_objects(rule)]
+        assert result == rules_expanded
+
     def test_object_expansion_v6(self):
         config = {
             'objects': {
@@ -105,6 +121,22 @@ class TestFwGen(object):
         fw = fwgen.FwGen(config)
         rule = '-6 -A INPUT -s ${host_v6} -d ${net_v6} -j ACCEPT'
         rules_expanded = ['-6 -A INPUT -s fd32::1 -d fd33::/64 -j ACCEPT']
+
+        result = [i for i in fw._expand_objects(rule)]
+        assert result == rules_expanded
+
+    def test_object_expansion_v6_only(self):
+        config = {
+            'objects': {
+                'host': [
+                    '10.0.0.10',
+                    'fd33::10'
+                 ]
+            }
+        }
+        fw = fwgen.FwGen(config)
+        rule = '-6 -A INPUT -s ${host} -j ACCEPT'
+        rules_expanded = ['-6 -A INPUT -s fd33::10 -j ACCEPT']
 
         result = [i for i in fw._expand_objects(rule)]
         assert result == rules_expanded

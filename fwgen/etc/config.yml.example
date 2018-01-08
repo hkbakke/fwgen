@@ -79,21 +79,31 @@
 #  tcp+udp:
 #    - tcp
 #    - udp
+#
 #  syslog:
 #    - 10.0.10.10
 #    - fd33::10
 #  dns_server:
 #    - 10.0.10.2
 #    - fd33::11
+#  log_accept:
+#    - LOG
+#    - ACCEPT
+#
+#  # You can also just write a string if you only have one value
 #  test: 10.0.1.2
 #
 #  Example rule:
-#    - -s ${syslog} -d ${dns_server} -p ${tcp+udp} --dport 514 -j ACCEPT
+#    - -s ${syslog} -d ${dns_server} -p ${tcp+udp} --dport 514 -j ${log_accept}
 #
 #  Which equals these manually defined rules if you do not use variables:
+#    - -4 -s 10.0.10.10 -d 10.0.1.2 -p tcp --dport 514 -j LOG
 #    - -4 -s 10.0.10.10 -d 10.0.1.2 -p tcp --dport 514 -j ACCEPT
+#    - -4 -s 10.0.10.10 -d 10.0.1.2 -p udp --dport 514 -j LOG
 #    - -4 -s 10.0.10.10 -d 10.0.1.2 -p udp --dport 514 -j ACCEPT
+#    - -6 -s fd33::10 -d fd33::11 -p tcp --dport 514 -j LOG
 #    - -6 -s fd33::10 -d fd33::11 -p tcp --dport 514 -j ACCEPT
+#    - -6 -s fd33::10 -d fd33::11 -p udp --dport 514 -j LOG
 #    - -6 -s fd33::10 -d fd33::11 -p udp --dport 514 -j ACCEPT
 
 # You may override the default filter policies of "DROP". However, this is not really

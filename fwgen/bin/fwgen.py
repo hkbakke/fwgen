@@ -41,6 +41,7 @@ def _main():
     parser.add_argument('--no-save', action='store_true',
                         help='Apply the ruleset but do not make it persistent')
     parser.add_argument('--version', action='store_true', help='Show version')
+    parser.add_argument('--no-diff', action='store_true', help='Do not show diff on changes')
     parser.add_argument(
         '--log-level',
         choices=[
@@ -126,6 +127,9 @@ def _main():
                 logger.info('Applying ruleset...')
                 fw.apply()
                 logger.info('Ruleset applied!')
+
+            if not args.no_diff:
+                fw.diff()
 
             logger.info('Running check commands...')
             fw.check()

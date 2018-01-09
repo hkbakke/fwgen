@@ -5,6 +5,7 @@ import shutil
 import filecmp
 import shlex
 import ipaddress
+import difflib
 from collections import OrderedDict
 from pathlib import Path
 
@@ -578,6 +579,69 @@ class Rollback(FwGen):
     def check(self):
         for cmd in self.config['check_commands']:
             run_command(shlex.split(cmd))
+
+    @staticmethod
+    def _ipt_diff_filter(in_data):
+        """
+        Get rid of counters and commented lines with timestamps.
+        """
+        counters_regex = re.compile(r'(:.+)\[[0-9]+:[0-9]+\]$')
+
+        for i in in_data:
+            if i.startswith('#'):
+                continue
+
+            counters_match = re.search(counters_regex, i)
+            if counters_match:
+                i = counters_match.group(1)
+
+            yield i
+
+    @staticmethod
+    def _ipset_diff_filter(in_data):
+        """
+        Ipset seems to add entries in a non-deterministic order when doing
+        atomic replace. This will cause the differ to output changes even
+        though there are none. To fix this, ensure the entries for each
+        ipset is sorted before being diffed.
+        """
+        entries = []
+
+        for i in in_data:
+            if i.startswith('add '):
+                entries.append(i)
+                continue
+
+            for entry in sorted(entries):
+                yield entry
+
+            entries = []
+            yield i
+
+        # Ensure we get the last content if the in_data ends in 'add'-entries
+        for entry in sorted(entries):
+            yield entry
+
+    def diff(self):
+        ipt_diff = difflib.unified_diff(list(self._ipt_diff_filter(self.ip_rollback)),
+                                        list(self._ipt_diff_filter(self.iptables.running())),
+                                        lineterm='')
+        ip6t_diff = difflib.unified_diff(list(self._ipt_diff_filter(self.ip6_rollback)),
+                                         list(self._ipt_diff_filter(self.ip6tables.running())),
+                                         lineterm='')
+        ipset_diff = difflib.unified_diff(list(self._ipset_diff_filter(self.ipsets_rollback)),
+                                          list(self._ipset_diff_filter(self.ipsets.running())),
+                                          lineterm='')
+        ipt_diff_output = '\n'.join(ipt_diff)
+        ip6t_diff_output = '\n'.join(ip6t_diff)
+        ipset_diff_output = '\n'.join(ipset_diff)
+
+        if ipt_diff_output:
+            LOGGER.info('### IPTABLES CHANGES ###\n%s', ipt_diff_output)
+        if ip6t_diff_output:
+            LOGGER.info('### IP6TABLES CHANGES ###\n%s', ip6t_diff_output)
+        if ipset_diff_output:
+            LOGGER.info('### IPSET CHANGES ###\n%s', ipset_diff_output)
 
     def rollback(self):
         self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

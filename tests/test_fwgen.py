@@ -29,10 +29,10 @@ class TestFwGen(object):
             '-A FORWARD -i eth0 -o eth2 -j ACCEPT',
             '-A FORWARD -i eth0 -o eth3 -j ACCEPT',
             '-A FORWARD -i eth1 -o eth2 -j ACCEPT',
-            '-A FORWARD -i eth1 -o eth3 -j ACCEPT',
+            '-A FORWARD -i eth1 -o eth3 -j ACCEPT'
         ]
 
-        result = [i for i in fw._expand_zones(rule)]
+        result = list(fw._expand_zones(rule))
         assert result == rules_expanded
 
     def test_zone_expansion_no_zone(self):
@@ -50,7 +50,7 @@ class TestFwGen(object):
         rule = '-A INPUT -i lo -j ACCEPT'
         rules_expanded = [rule]
 
-        result = [i for i in fw._expand_zones(rule)]
+        result = list(fw._expand_zones(rule))
         assert result == rules_expanded
 
     def test_object_expansion_v4(self):
@@ -64,7 +64,7 @@ class TestFwGen(object):
         rule = '-A PREROUTING -s ${host_v4} -j DNAT --to-destination ${host2_v4}'
         rules_expanded = ['-4 -A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rules_expanded
 
     def test_object_expansion_v4_as_v4(self):
@@ -78,7 +78,7 @@ class TestFwGen(object):
         rule = '-4 -A PREROUTING -s ${host_v4} -j DNAT --to-destination ${host2_v4}'
         rules_expanded = ['-4 -A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rules_expanded
 
     def test_object_expansion_v4_only(self):
@@ -87,14 +87,14 @@ class TestFwGen(object):
                 'host': [
                     '10.0.0.10',
                     'fd33::10'
-                 ]
+                ]
             }
         }
         fw = fwgen.FwGen(config)
         rule = '-4 -A INPUT -s ${host} -j ACCEPT'
         rules_expanded = ['-4 -A INPUT -s 10.0.0.10 -j ACCEPT']
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rules_expanded
 
     def test_object_expansion_v6(self):
@@ -108,7 +108,7 @@ class TestFwGen(object):
         rule = '-A INPUT -s ${host_v6} -d ${net_v6} -j ACCEPT'
         rules_expanded = ['-6 -A INPUT -s fd32::1 -d fd33::/64 -j ACCEPT']
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rules_expanded
 
     def test_object_expansion_v6_as_v6(self):
@@ -122,7 +122,7 @@ class TestFwGen(object):
         rule = '-6 -A INPUT -s ${host_v6} -d ${net_v6} -j ACCEPT'
         rules_expanded = ['-6 -A INPUT -s fd32::1 -d fd33::/64 -j ACCEPT']
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rules_expanded
 
     def test_object_expansion_v6_only(self):
@@ -131,14 +131,14 @@ class TestFwGen(object):
                 'host': [
                     '10.0.0.10',
                     'fd33::10'
-                 ]
+                ]
             }
         }
         fw = fwgen.FwGen(config)
         rule = '-6 -A INPUT -s ${host} -j ACCEPT'
         rules_expanded = ['-6 -A INPUT -s fd33::10 -j ACCEPT']
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rules_expanded
 
     def test_list_object_expansion(self):
@@ -166,7 +166,7 @@ class TestFwGen(object):
             '-4 -A FORWARD -s 10.0.0.3 -d 192.168.0.2 -j ACCEPT',
             ]
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rules_expanded
 
     def test_no_object_expansion(self):
@@ -175,7 +175,7 @@ class TestFwGen(object):
         rule = '-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10'
         rule_expanded = ['-A PREROUTING -s 10.0.0.10 -j DNAT --to-destination 192.168.0.10']
 
-        result = [i for i in fw._expand_objects(rule)]
+        result = list(fw._expand_objects(rule))
         assert result == rule_expanded
 
     def test_get_policy_rules(self):
@@ -207,7 +207,7 @@ class TestFwGen(object):
             ('raw', ':PREROUTING ACCEPT'),
             ('raw', ':OUTPUT ACCEPT'),
         ]
-        assert sorted([i for i in fw._get_policy_rules()]) == sorted(policy_rules)
+        assert sorted(fw._get_policy_rules()) == sorted(policy_rules)
 
     def test_get_rules(self):
         rules = OrderedDefaultDict()
@@ -230,7 +230,7 @@ class TestFwGen(object):
             ('filter', '-A OUTPUT -j ACCEPT'),
             ('nat', '-A POSTROUTING -j MASQUERADE')
         ]
-        assert [i for i in fw._get_rules(rules)] == rule_list
+        assert list(fw._get_rules(rules)) == rule_list
 
     def test_get_zone_rules(self):
         config = OrderedDefaultDict()
@@ -253,7 +253,7 @@ class TestFwGen(object):
             ('filter', '-A ZONE0_OUTPUT -j ACCEPT'),
             ('nat', '-A ZONE0_POSTROUTING -j MASQUERADE')
         ]
-        assert [i for i in fw._get_zone_rules()] == rule_list
+        assert list(fw._get_zone_rules()) == rule_list
 
     def test_get_helper_chains(self):
         config = OrderedDefaultDict()
@@ -274,8 +274,26 @@ class TestFwGen(object):
             ('filter', '-A LOG_DROP -j LOG --log-level warning --log-prefix "IPTABLES_DROP: "'),
             ('filter', '-A LOG_DROP -j DROP'),
         ]
-        assert [i for i in fw._get_helper_chains()] == rule_list
+        assert list(fw._get_helper_chains()) == rule_list
 
     def test_new_chain(self):
-        fw = fwgen.FwGen({})
-        assert fw._new_chain('LOG_REJECT') == ':LOG_REJECT -'
+        assert fwgen.FwGen._new_chain('LOG_REJECT') == ':LOG_REJECT -'
+
+    def test_ipset_diff_filter(self):
+        ipsets = [
+            'create dmz_collectd_hosts hash:ip family inet hashsize 1024 maxelem 65536',
+            'add dmz_collectd_hosts 10.0.5.19',
+            'add dmz_collectd_hosts 10.0.5.10',
+            'create no_proxy_v4 hash:net family inet hashsize 1024 maxelem 65536',
+            'add no_proxy_v4 10.0.0.1',
+            'add no_proxy_v4 10.0.6.14'
+        ]
+        output = [
+            'create dmz_collectd_hosts hash:ip family inet hashsize 1024 maxelem 65536',
+            'add dmz_collectd_hosts 10.0.5.10',
+            'add dmz_collectd_hosts 10.0.5.19',
+            'create no_proxy_v4 hash:net family inet hashsize 1024 maxelem 65536',
+            'add no_proxy_v4 10.0.0.1',
+            'add no_proxy_v4 10.0.6.14'
+        ]
+        assert list(fwgen.Rollback._ipset_diff_filter(ipsets)) == list(output)

@@ -7,10 +7,14 @@ import shlex
 import ipaddress
 import difflib
 import textwrap
+import os
+import tarfile
+from datetime import datetime
 from collections import OrderedDict
 from pathlib import Path
+from operator import attrgetter
 
-from fwgen.helpers import ordered_dict_merge, get_etc, random_word, run_command
+from fwgen.helpers import ordered_dict_merge, random_word, run_command
 
 
 LOGGER = logging.getLogger(__name__)
@@ -32,6 +36,9 @@ class RulesetError(Exception):
 
 
 class DeprecationError(Exception):
+    pass
+
+class NonExistingArchiveError(Exception):
     pass
 
 
@@ -74,11 +81,11 @@ class Ruleset(object):
         except FileExistsError:
             pass
 
-        tmp = path.with_suffix('.tmp')
+        tmp = path.parent / Path(str(path.name) + '.tmp')
         LOGGER.debug("Running command '%s > %s'", ' '.join(self.save_cmd), tmp)
-        with tmp.open('wb') as f:
+        with os.fdopen(os.open(str(tmp), os.O_WRONLY | os.O_CREAT, 0o600), 'wb') as f:
             subprocess.check_call(self.save_cmd, stdout=f)
-        tmp.chmod(0o600)
+
         LOGGER.debug("Renaming '%s' to '%s'", tmp, path)
         tmp.rename(path)
         self.restore_file = path
@@ -86,6 +93,21 @@ class Ruleset(object):
     def running(self):
         output = run_command(self.save_cmd)
         return output.splitlines()
+
+    @staticmethod
+    def _diff_filter(diff):
+        for i in diff:
+            yield i
+
+    def diff(self, rules, reverse=False):
+        if reverse:
+            old = self._diff_filter(self.running())
+            new = self._diff_filter(rules)
+        else:
+            old = self._diff_filter(rules)
+            new = self._diff_filter(self.running())
+
+        return difflib.unified_diff(list(old), list(new), lineterm='')
 
 
 class IptablesCommon(Ruleset):
@@ -98,6 +120,23 @@ class IptablesCommon(Ruleset):
                 rules.append(':%s %s' % (chain, 'ACCEPT'))
             rules.append('COMMIT')
         self._apply(rules)
+
+    @staticmethod
+    def _diff_filter(diff):
+        """
+        Get rid of counters and commented lines with timestamps.
+        """
+        counters_regex = re.compile(r'(:.+)\[[0-9]+:[0-9]+\]$')
+
+        for i in diff:
+            if i.startswith('#'):
+                continue
+
+            counters_match = re.search(counters_regex, i)
+            if counters_match:
+                i = counters_match.group(1)
+
+            yield i
 
 
 class Iptables(IptablesCommon):
@@ -173,6 +212,31 @@ class Ipsets(Ruleset):
             output.append('destroy %s' % ipset)
 
         self._apply(output)
+
+    @staticmethod
+    def _diff_filter(diff):
+        """
+        Ipset seems to add entries in a non-deterministic order when doing
+        atomic replace. This will cause the differ to output changes even
+        when there are none. To fix this, ensure the entries for each ipset
+        is sorted before being diffed.
+        """
+        entries = []
+
+        for i in diff:
+            if i.startswith('add '):
+                entries.append(i)
+                continue
+
+            for entry in sorted(entries):
+                yield entry
+
+            entries = []
+            yield i
+
+        # Ensure we get the last content if the in_data ends in 'add'-entries
+        for entry in sorted(entries):
+            yield entry
 
 
 class FirewallService(object):
@@ -251,8 +315,8 @@ class FirewallService(object):
                 ' '.join(self.iptables.restore_cmd), self.iptables.restore_file),
             'ExecStart=%s "%s"' % (
                 ' '.join(self.ip6tables.restore_cmd), self.ip6tables.restore_file),
-            'ExecReload=%s --restore --no-confirm' % fwgen_cmd,
-            'ExecStop=%s --clear --no-save --no-confirm' % fwgen_cmd,
+            'ExecReload=%s apply --restore --no-confirm --no-diff --no-archive' % fwgen_cmd,
+            'ExecStop=%s apply --clear --no-save --no-confirm --no-diff' % fwgen_cmd,
             '',
             '[Install]',
             'WantedBy=multi-user.target'
@@ -283,14 +347,117 @@ class ConfigDir(object):
         self.config.chmod(0o600)
 
 
+class Archive(object):
+    def __init__(self, path):
+        self.path = path
+        self.suffix = '.tar.xz'
+        self.tmp_suffix = '.tmp'
+
+    def create(self):
+        try:
+            self.path.mkdir(parents=True)
+        except FileExistsError:
+            pass
+
+    def new(self):
+        timestamp = datetime.now().strftime('%Y%m%dT%H%M%S')
+        path = self.path / Path('%s%s' % (timestamp, self.suffix))
+        return ArchiveFile(path)
+
+    def get_all(self):
+        for path in self.path.glob('*%s' % self.suffix):
+            yield ArchiveFile(path)
+
+    def get_all_indexed(self):
+        archive_files = sorted(self.get_all(), key=attrgetter('name'), reverse=True)
+        for index, archive_file in enumerate(archive_files):
+            yield (index, archive_file)
+
+    def clean(self, keep=0):
+        if keep < 0:
+            raise ValueError('keep value must be an integer 0 or more')
+
+        for tmp in self.path.glob('*%s' % self.tmp_suffix):
+            tmp.unlink()
+
+        archive_files = sorted(self.get_all(), key=attrgetter('name'), reverse=True)
+        for archive_file in archive_files[keep:]:
+            archive_file.remove()
+
+    def get_by_index(self, index):
+        """
+        The archive files must be sorted the same way as the 'archive --list' output
+        to ensure identical index mapping
+        """
+        for i, archive_file in self.get_all_indexed():
+            if i == index:
+                return archive_file
+        raise NonExistingArchiveError("The archive file index '%d' does not exist" % index)
+
+    def get_by_name(self, name):
+        for archive_file in self.get_all():
+            if archive_file.name == name:
+                return archive_file
+        raise NonExistingArchiveError("The archive file named '%s' does not exist" % name)
+
+    def get(self, name):
+        try:
+            index = int(name)
+            return self.get_by_index(index)
+        except ValueError:
+            pass
+
+        return self.get_by_name(name)
+
+
+class ArchiveFile(object):
+    def __init__(self, path):
+        self.path = path
+        self.name = path.name
+        self.iptables_restore = 'iptables.restore'
+        self.ip6tables_restore = 'ip6tables.restore'
+        self.ipsets_restore = 'ipsets.restore'
+
+    def add(self, iptables, ip6tables, ipsets):
+        tmp = Path(str(self.path) + '.tmp')
+
+        LOGGER.debug("Archiving ruleset to '%s'", tmp)
+        with os.fdopen(os.open(str(tmp), os.O_WRONLY | os.O_CREAT, 0o600), 'wb') as f:
+            with tarfile.open(mode='w:xz', fileobj=f) as tar:
+                tar.add(str(iptables), arcname=self.iptables_restore)
+                tar.add(str(ip6tables), arcname=self.ip6tables_restore)
+                tar.add(str(ipsets), arcname=self.ipsets_restore)
+
+        LOGGER.debug("Renaming '%s' to '%s'", tmp, self.path)
+        tmp.rename(self.path)
+
+    def remove(self):
+        LOGGER.debug("Removing ruleset archive '%s'", self.path)
+        self.path.unlink()
+
+    def _extract_file(self, name):
+        with tarfile.open(str(self.path), 'r:xz') as tar:
+            with tar.extractfile(name) as f:
+                return f.read().decode('utf-8').splitlines()
+
+    def iptables(self):
+        return self._extract_file(self.iptables_restore)
+
+    def ip6tables(self):
+        return self._extract_file(self.ip6tables_restore)
+
+    def ipsets(self):
+        return self._extract_file(self.ipsets_restore)
+
+
 class FwGen(object):
     def __init__(self, config):
         defaults = OrderedDict()
         defaults = {
             'restore_files': {
-                'iptables': 'fwgen/rules/iptables.restore',
-                'ip6tables': 'fwgen/rules/ip6tables.restore',
-                'ipsets': 'fwgen/rules/ipsets.restore'
+                'iptables': '/var/lib/fwgen/rules/iptables.restore',
+                'ip6tables': '/var/lib/fwgen/rules/ip6tables.restore',
+                'ipsets': '/var/lib/fwgen/rules/ipsets.restore'
             },
             'cmds': {
                 'iptables_save': shutil.which('iptables-save'),
@@ -303,6 +470,10 @@ class FwGen(object):
                 'enable': True,
                 'name': 'fwgen'
             },
+            'archive': {
+                'path': '/var/lib/fwgen/archive',
+                'keep': 10
+            },
             'check_commands': []
         }
         self.config = ordered_dict_merge(config, defaults)
@@ -313,12 +484,13 @@ class FwGen(object):
                                    self.config['cmds']['ip6tables_restore'])
         self.ipsets = Ipsets(self.config['cmds']['ipset'])
         self.restore_file = {
-            'ip': self._get_path(Path(self.config['restore_files']['iptables'])),
-            'ip6': self._get_path(Path(self.config['restore_files']['ip6tables'])),
-            'ipset': self._get_path(Path(self.config['restore_files']['ipsets']))
+            'ip': Path(self.config['restore_files']['iptables']),
+            'ip6': Path(self.config['restore_files']['ip6tables']),
+            'ipset': Path(self.config['restore_files']['ipsets'])
         }
         self.zone_pattern = re.compile(r'^(.*?)%\{(.+?)\}(.*)$')
         self.object_pattern = re.compile(r'^(.*?)\$\{(.+?)\}(.*)$')
+        self._archive = Archive(Path(self.config['archive']['path']))
 
     def _deprecation_check(self):
         if self.config.get('global'):
@@ -332,14 +504,6 @@ class FwGen(object):
         if self.config.get('variables'):
             raise DeprecationError("The dictionary 'variables' is renamed to 'objects'"
                                    " in v0.14.0 and newer configurations.")
-
-    @staticmethod
-    def _get_path(path):
-        if str(path).startswith('/'):
-            new_path = path
-        else:
-            new_path = get_etc() / path
-        return new_path
 
     def _output_ipsets(self):
         output = []
@@ -516,10 +680,41 @@ class FwGen(object):
         self.ip6tables.save(self.restore_file['ip6'])
         self.ipsets.save(self.restore_file['ipset'])
 
-    def restore(self):
-        self.iptables.restore(self.restore_file['ip'])
-        self.ip6tables.restore(self.restore_file['ip6'])
-        self.ipsets.restore(self.restore_file['ipset'])
+    def archive(self):
+        keep = self.config['archive']['keep']
+        self._archive.create()
+
+        if keep < 1:
+            self._archive.clean(keep)
+            return
+
+        archive_file = self._archive.new()
+        archive_file.add(self.restore_file['ip'], self.restore_file['ip6'],
+                         self.restore_file['ipset'])
+        self._archive.clean(keep)
+
+    def _restore_archived(self, name):
+        archive_file = self._archive.get(name)
+        iptables = archive_file.iptables()
+        ip6tables = archive_file.ip6tables()
+        ipsets = archive_file.ipsets()
+        LOGGER.info("Restoring ruleset from '%s'", archive_file.path)
+        self._apply(iptables, ip6tables, ipsets)
+
+    def _restore_saved(self):
+        iptables = self.restore_file['ip']
+        ip6tables = self.restore_file['ip6']
+        ipsets = self.restore_file['ipset']
+        LOGGER.info('Restoring from saved ruleset')
+        self.iptables.restore(iptables)
+        self.ip6tables.restore(ip6tables)
+        self.ipsets.restore(ipsets)
+
+    def restore(self, archive=None):
+        if archive is None:
+            self._restore_saved()
+        else:
+            self._restore_archived(archive)
 
     def _apply(self, ip_rules, ip6_rules, ipsets):
         # Apply ipsets first to ensure they exist when the rules are applied
@@ -560,6 +755,51 @@ class FwGen(object):
         else:
             service.disable()
 
+    @staticmethod
+    def _printable_diff(diff, header, indent=4):
+        content = '\n'.join(diff)
+        if not content:
+            return None
+        return '%s\n\n%s\n' % (header, textwrap.indent(content, ' ' * indent))
+
+    def _diff(self, iptables, ip6tables, ipsets, reverse=False):
+        ipt_diff = self.iptables.diff(iptables, reverse)
+        ip6t_diff = self.ip6tables.diff(ip6tables, reverse)
+        ipsets_diff = self.ipsets.diff(ipsets, reverse)
+        ipt_diff_output = self._printable_diff(ipt_diff, 'iptables changes:')
+        ip6t_diff_output = self._printable_diff(ip6t_diff, 'ip6tables changes:')
+        ipsets_diff_output = self._printable_diff(ipsets_diff, 'ipsets changes:')
+
+        if ipt_diff_output:
+            LOGGER.info(ipt_diff_output)
+        if ip6t_diff_output:
+            LOGGER.info(ip6t_diff_output)
+        if ipsets_diff_output:
+            LOGGER.info(ipsets_diff_output)
+
+    def diff_archive(self, name):
+        archive_file = self._archive.get(name)
+        ipt = archive_file.iptables()
+        ip6t = archive_file.ip6tables()
+        ipsets = archive_file.ipsets()
+        self._diff(ipt, ip6t, ipsets, reverse=True)
+
+    def list_archive(self):
+        archive_files_indexed = list(self._archive.get_all_indexed())
+        width = max(len(str(len(archive_files_indexed))), len('INDEX'))
+        print('%s\tNAME' % 'INDEX'.ljust(width))
+        for index, archive_file in archive_files_indexed:
+            print('%s\t%s' % (str(index).ljust(width), archive_file.name))
+
+    def running_iptables(self):
+        return self.iptables.running()
+
+    def running_ip6tables(self):
+        return self.ip6tables.running()
+
+    def running_ipsets(self):
+        return self.ipsets.running()
+
 
 class Rollback(FwGen):
     def __init__(self, config):
@@ -583,72 +823,11 @@ class Rollback(FwGen):
         for cmd in self.config['check_commands']:
             run_command(shlex.split(cmd))
 
-    @staticmethod
-    def _ipt_diff_filter(in_data):
-        """
-        Get rid of counters and commented lines with timestamps.
-        """
-        counters_regex = re.compile(r'(:.+)\[[0-9]+:[0-9]+\]$')
-
-        for i in in_data:
-            if i.startswith('#'):
-                continue
-
-            counters_match = re.search(counters_regex, i)
-            if counters_match:
-                i = counters_match.group(1)
-
-            yield i
-
-    @staticmethod
-    def _ipset_diff_filter(in_data):
-        """
-        Ipset seems to add entries in a non-deterministic order when doing
-        atomic replace. This will cause the differ to output changes even
-        though there are none. To fix this, ensure the entries for each
-        ipset is sorted before being diffed.
-        """
-        entries = []
-
-        for i in in_data:
-            if i.startswith('add '):
-                entries.append(i)
-                continue
-
-            for entry in sorted(entries):
-                yield entry
-
-            entries = []
-            yield i
-
-        # Ensure we get the last content if the in_data ends in 'add'-entries
-        for entry in sorted(entries):
-            yield entry
-
-    @staticmethod
-    def _decorate_diff(diff, header, indent=4):
-        return '%s\n\n%s\n' % (header, textwrap.indent(diff, ' ' * indent))
-
     def diff(self):
-        ipt_diff = difflib.unified_diff(list(self._ipt_diff_filter(self.ip_rollback)),
-                                        list(self._ipt_diff_filter(self.iptables.running())),
-                                        lineterm='')
-        ip6t_diff = difflib.unified_diff(list(self._ipt_diff_filter(self.ip6_rollback)),
-                                         list(self._ipt_diff_filter(self.ip6tables.running())),
-                                         lineterm='')
-        ipset_diff = difflib.unified_diff(list(self._ipset_diff_filter(self.ipsets_rollback)),
-                                          list(self._ipset_diff_filter(self.ipsets.running())),
-                                          lineterm='')
-        ipt_diff_output = '\n'.join(ipt_diff)
-        ip6t_diff_output = '\n'.join(ip6t_diff)
-        ipset_diff_output = '\n'.join(ipset_diff)
-
-        if ipt_diff_output:
-            LOGGER.info(self._decorate_diff(ipt_diff_output, 'iptables changed:'))
-        if ip6t_diff_output:
-            LOGGER.info(self._decorate_diff(ip6t_diff_output, 'ip6tables changed:'))
-        if ipset_diff_output:
-            LOGGER.info(self._decorate_diff(ipset_diff_output, 'ipset changed:'))
+        ipt_old = self.ip_rollback
+        ip6t_old = self.ip6_rollback
+        ipsets_old = self.ipsets_rollback
+        self._diff(ipt_old, ip6t_old, ipsets_old)
 
     def rollback(self):
         self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

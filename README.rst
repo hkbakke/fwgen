@@ -25,7 +25,8 @@ Advantages of using fwgen:
 - Firewall operations are atomic. It either applies correctly or not, without flushing your existing ruleset, potentially leaving you temporarily exposed.
 - Automatic rollback to previous ruleset if something goes wrong
 - Supports check commands to automatically roll back ruleset if check fails
-- Automatically adapts paths if being run in a network namespace
+- Combines IPv4 and IPv6 in a single non-duplicated config
+- Automatically archives rulesets which later can be easily diffed or restored
 
 Requirements
 ============
@@ -81,7 +82,7 @@ To create your initial config file you should run:
 
     fwgen --create-config-dir
 
-Update the config with your ruleset. Look at the `example configuration`_ for guidance.
+Update the config with your ruleset. Look at the `example configuration`_ for guidance. fwgen also has some built-in helper chains and defaults available for ease of use. See `default configuration`_ for those.
 
 Usage
 =====
@@ -90,36 +91,62 @@ To generate the new ruleset:
 
 ::
 
-    fwgen
+    fwgen apply
 
 To skip confirmation:
 
 ::
 
-    fwgen --no-confirm
+    fwgen apply --no-confirm
 
 In addition to rules defined in the config file you can add/override rules from command line. Add ``--log-level debug`` to see the resulting complete config.
 
 ::
 
-    fwgen --config-json '{"policy": {"filter": {"INPUT": "ACCEPT"}}}'
+    fwgen --config-json '{"policy": {"filter": {"INPUT": "ACCEPT"}}}' firewall
 
 To temporarily clear the running ruleset without overwriting the saved persistent ruleset:
 
 ::
 
-    fwgen --no-save --clear
+    fwgen apply --no-save --clear
 
-For troubleshooting
+To list archived rulesets:
 
 ::
 
-    fwgen --log-level debug
+    fwgen show --archive
 
-For other functionality, see:
+To view changes between currently running and archived ruleset:
+
+::
+
+    fwgen show --diff <index|name>
+
+You can restore any archived ruleset, or alternatively give no value which means that fwgen restores the currently persisted version:
+
+::
+
+    fwgen apply --restore <index|name>
+
+
+To view the currently running configuration:
+
+::
+
+    fwgen show --running
+
+For troubleshooting:
+
+::
+
+    fwgen --log-level debug apply
+
+For a complete list of the functionality, see:
 
 ::
 
     fwgen --help
 
 .. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/config.yml.example
+.. _default configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/default.yml

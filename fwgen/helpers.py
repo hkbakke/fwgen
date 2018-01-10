@@ -1,8 +1,6 @@
-import os
 import subprocess
 import logging
 from collections import OrderedDict
-from pathlib import Path
 import string
 import random
 
@@ -21,17 +19,6 @@ def ordered_dict_merge(d1, d2):
         else:
             d2[k] = v
     return d2
-
-def get_etc():
-    etc = Path('/etc')
-    netns = get_netns()
-    if netns:
-        etc = Path('/etc/netns') / netns
-    return etc
-
-def get_netns():
-    cmd = ['ip', 'netns', 'identify', str(os.getpid())]
-    return subprocess.check_output(cmd).strip().decode('utf-8')
 
 def random_word(length=3):
     letters = string.ascii_lowercase

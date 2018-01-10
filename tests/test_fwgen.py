@@ -280,7 +280,7 @@ class TestFwGen(object):
         assert fwgen.FwGen._new_chain('LOG_REJECT') == ':LOG_REJECT -'
 
     def test_ipset_diff_filter(self):
-        ipsets = [
+        diff = [
             'create dmz_collectd_hosts hash:ip family inet hashsize 1024 maxelem 65536',
             'add dmz_collectd_hosts 10.0.5.19',
             'add dmz_collectd_hosts 10.0.5.10',
@@ -296,4 +296,4 @@ class TestFwGen(object):
             'add no_proxy_v4 10.0.0.1',
             'add no_proxy_v4 10.0.6.14'
         ]
-        assert list(fwgen.Rollback._ipset_diff_filter(ipsets)) == list(output)
+        assert list(fwgen.Ipsets._diff_filter(diff)) == list(output)

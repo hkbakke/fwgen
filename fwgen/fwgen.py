@@ -6,6 +6,7 @@ import filecmp
 import shlex
 import ipaddress
 import difflib
+import textwrap
 from collections import OrderedDict
 from pathlib import Path
 
@@ -74,9 +75,11 @@ class Ruleset(object):
             pass
 
         tmp = path.with_suffix('.tmp')
+        LOGGER.debug("Running command '%s > %s'", ' '.join(self.save_cmd), tmp)
         with tmp.open('wb') as f:
             subprocess.check_call(self.save_cmd, stdout=f)
         tmp.chmod(0o600)
+        LOGGER.debug("Renaming '%s' to '%s'", tmp, path)
         tmp.rename(path)
         self.restore_file = path
 
@@ -622,6 +625,10 @@ class Rollback(FwGen):
         for entry in sorted(entries):
             yield entry
 
+    @staticmethod
+    def _decorate_diff(diff, header, indent=4):
+        return '%s\n\n%s\n' % (header, textwrap.indent(diff, ' ' * indent))
+
     def diff(self):
         ipt_diff = difflib.unified_diff(list(self._ipt_diff_filter(self.ip_rollback)),
                                         list(self._ipt_diff_filter(self.iptables.running())),
@@ -637,11 +644,11 @@ class Rollback(FwGen):
         ipset_diff_output = '\n'.join(ipset_diff)
 
         if ipt_diff_output:
-            LOGGER.info('### IPTABLES CHANGES ###\n%s', ipt_diff_output)
+            LOGGER.info(self._decorate_diff(ipt_diff_output, 'iptables changed:'))
         if ip6t_diff_output:
-            LOGGER.info('### IP6TABLES CHANGES ###\n%s', ip6t_diff_output)
+            LOGGER.info(self._decorate_diff(ip6t_diff_output, 'ip6tables changed:'))
         if ipset_diff_output:
-            LOGGER.info('### IPSET CHANGES ###\n%s', ipset_diff_output)
+            LOGGER.info(self._decorate_diff(ipset_diff_output, 'ipset changed:'))
 
     def rollback(self):
         self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

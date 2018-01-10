@@ -67,7 +67,7 @@ def _main():
     # Set up logging
     logger = logging.getLogger()
     logger.setLevel(args.log_level.upper())
-    fmt = logging.Formatter('[%(levelname)s] %(message)s')
+    fmt = logging.Formatter('%(message)s')
     console = logging.StreamHandler()
     console.setFormatter(fmt)
     logger.addHandler(console)
@@ -138,7 +138,7 @@ def _main():
             if not args.no_confirm:
                 logger.warning('Rolling back in %d seconds unless confirmed. Verify that you '
                                'can establish NEW connections!', args.timeout)
-                message = ("\n-> Press 'Enter' to confirm or 'Ctrl-C' to rollback immediately\n")
+                message = ("\n>>> Press 'Enter' to confirm or 'Ctrl-C' to rollback immediately\n")
                 wait_for_input(message, args.timeout)
 
             if not args.restore:

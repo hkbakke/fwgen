@@ -52,7 +52,7 @@ def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict)
     return yaml.load(stream, OrderedLoader)
 
 def run_command(cmd):
-    LOGGER.debug('Running command: %s', ' '.join(cmd))
+    LOGGER.debug("Running command '%s'", ' '.join(cmd))
     try:
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
                                          universal_newlines=True)
@@ -62,6 +62,6 @@ def run_command(cmd):
         raise
 
     if output:
-        LOGGER.debug('\n%s', output.rstrip('\n'))
+        LOGGER.debug('%s\n%s\n%s\n', '-' * 60, output.rstrip('\n'), '-' * 60)
 
     return output

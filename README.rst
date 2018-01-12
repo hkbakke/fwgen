@@ -82,7 +82,7 @@ To create your initial config file you should run:
 
     fwgen --create-config-dir
 
-Update the config with your ruleset. Look at the `example configuration`_ for guidance. fwgen also has some built-in helper chains and defaults available for ease of use. See `default configuration`_ for those.
+Update the config with your ruleset. Look at the `example configuration`_ for guidance. fwgen also has some built-in helper chains and defaults available for ease of use. See the `default configuration`_ for those.
 
 Usage
 =====
@@ -149,4 +149,4 @@ For a complete list of the functionality, see:
     fwgen --help
 
 .. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/config.yml.example
-.. _default configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/default.yml
+.. _default configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/defaults.yml

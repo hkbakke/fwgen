@@ -83,18 +83,18 @@ def diff_subcommands(args, config):
 
 def running_subcommands(args, config):
     fw = fwgen.FwGen(config)
-    config_selection = args.running_config_selection
+    selection = args.select
 
-    if not config_selection:
-        config_selection = 'all'
+    if not selection:
+        selection = 'all'
 
-    if config_selection in ['ipsets', 'all']:
+    if selection in ['ipsets', 'all']:
         print('#\n#\n# IPSETS\n#')
         print('\n'.join(fw.running_ipsets()))
-    if config_selection in ['iptables', 'fw', 'fw4', 'all']:
+    if selection in ['iptables', 'fw', 'fw4', 'all']:
         print('#\n#\n# IPTABLES\n#')
         print('\n'.join(fw.running_iptables()))
-    if config_selection in ['ip6tables', 'fw', 'fw6', 'all']:
+    if selection in ['ip6tables', 'fw', 'fw6', 'all']:
         print('#\n#\n# IP6TABLES\n#')
         print('\n'.join(fw.running_ip6tables()))
     return 0
@@ -208,8 +208,7 @@ def _main():
     # running subparser
     running_parser = show_subparsers.add_parser('running', help='show running configuration')
     running_parser.add_argument(
-        '--config',
-        dest='running_config_selection',
+        '--select',
         choices=[
             'iptables',
             'fw4',

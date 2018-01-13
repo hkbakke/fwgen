@@ -61,30 +61,42 @@ def merge_config(defaults_file, config_file, config_json=None):
 
     return config
 
-def show_subcommands(args, config):
+def archive_subcommands(args, config):
     fw = fwgen.FwGen(config)
-    if args.running:
-        if args.running in ['ipsets', 'all']:
-            print('#\n#\n# IPSETS\n#')
-            print('\n'.join(fw.running_ipsets()))
-        if args.running in ['iptables', 'fw', 'fw4', 'all']:
-            print('#\n#\n# IPTABLES\n#')
-            print('\n'.join(fw.running_iptables()))
-        if args.running in ['ip6tables', 'fw', 'fw6', 'all']:
-            print('#\n#\n# IP6TABLES\n#')
-            print('\n'.join(fw.running_ip6tables()))
-    elif args.diff:
-        diff = fw.diff_archive(args.diff)
-        if diff:
-            print(diff)
-    elif args.archive:
-        archive_files_indexed = list(fw.list_archive())
-        width = max(len(str(len(archive_files_indexed))), len('INDEX'))
-        print('%s\tNAME' % 'INDEX'.ljust(width))
-        for index, archive_file in archive_files_indexed:
-            print('%s\t%s' % (str(index).ljust(width), archive_file.name))
-    elif args.show_config:
-        print(json.dumps(config, indent=4))
+    archive_files_indexed = list(fw.list_archive())
+    width = max(len(str(len(archive_files_indexed))), len('INDEX'))
+    print('%s\tNAME' % 'INDEX'.ljust(width))
+    for index, archive_file in archive_files_indexed:
+        print('%s\t%s' % (str(index).ljust(width), archive_file.name))
+    return 0
+
+def config_subcommands(args, config):
+    print(json.dumps(config, indent=4))
+    return 0
+
+def diff_subcommands(args, config):
+    fw = fwgen.FwGen(config)
+    diff = fw.diff_archive(args.archive)
+    if diff:
+        print(diff)
+    return 0
+
+def running_subcommands(args, config):
+    fw = fwgen.FwGen(config)
+    config_selection = args.running_config_selection
+
+    if not config_selection:
+        config_selection = 'all'
+
+    if config_selection in ['ipsets', 'all']:
+        print('#\n#\n# IPSETS\n#')
+        print('\n'.join(fw.running_ipsets()))
+    if config_selection in ['iptables', 'fw', 'fw4', 'all']:
+        print('#\n#\n# IPTABLES\n#')
+        print('\n'.join(fw.running_iptables()))
+    if config_selection in ['ip6tables', 'fw', 'fw6', 'all']:
+        print('#\n#\n# IP6TABLES\n#')
+        print('\n'.join(fw.running_ip6tables()))
     return 0
 
 def apply_subcommands(args, config):
@@ -152,40 +164,52 @@ def _main():
         default='info',
         help='Set log level for console output'
     )
-    subparsers = parser.add_subparsers(title='subcommands')
+    subparsers = parser.add_subparsers(title='subcommands', dest='subcommand')
 
     # apply commands subparser
-    apply_sub = subparsers.add_parser('apply', help='apply firewall settings')
-    apply_sub.add_argument('--no-diff', action='store_true', help='Do not show diff on changes')
-    apply_sub.add_argument('--no-archive', action='store_true',
-                           help='Do not archive the saved ruleset')
-    apply_sub.add_argument('--no-save', action='store_true',
-                           help='Apply the ruleset but do not make it persistent. This also '
-                                'includes archiving and service configuration.')
-    apply_mutex_1 = apply_sub.add_mutually_exclusive_group()
+    apply_parser = subparsers.add_parser('apply', help='apply firewall settings')
+    apply_parser.add_argument('--no-diff', action='store_true', help='Do not show diff on changes')
+    apply_parser.add_argument('--no-archive', action='store_true',
+                              help='Do not archive the saved ruleset')
+    apply_parser.add_argument('--no-save', action='store_true',
+                              help='Apply the ruleset but do not make it persistent. This also '
+                                   'includes archiving and service configuration.')
+    apply_mutex_1 = apply_parser.add_mutually_exclusive_group()
     apply_mutex_1.add_argument('--clear', action='store_true', help='Clear the ruleset')
     apply_mutex_1.add_argument('--restore', action='store_true', default=False,
                                help='Restore saved ruleset')
     apply_mutex_1.add_argument('--archive', metavar='ARCHIVE',
                                help='Restore archived ruleset')
-    apply_mutex_2 = apply_sub.add_mutually_exclusive_group()
+    apply_mutex_2 = apply_parser.add_mutually_exclusive_group()
     apply_mutex_2.add_argument('--timeout', metavar='SECONDS', type=int, default=20,
                                help='Override timeout for rollback')
     apply_mutex_2.add_argument('--no-confirm', action='store_true',
                                help="Don't ask for confirmation before storing ruleset")
-    apply_sub.set_defaults(func=apply_subcommands)
+    apply_parser.set_defaults(func=apply_subcommands)
 
     # show commands subparser
-    show_sub = subparsers.add_parser('show', help='show firewall configuration and archive')
-    show_mutex_1 = show_sub.add_mutually_exclusive_group(required=True)
-    show_mutex_1.add_argument('--diff', metavar='ARCHIVE',
-                              help='Diff current ruleset against archived version')
-    show_mutex_1.add_argument('--archive', action='store_true',
-                              help='List available archived rulesets')
-    show_mutex_1.add_argument('--config', dest='show_config', action='store_true',
-                              help='Show fwgen config')
-    show_mutex_1.add_argument(
-        '--running',
+    show_parser = subparsers.add_parser('show', help='show configuration')
+    show_subparsers = show_parser.add_subparsers(title='subcommands')
+
+    # archive subparser
+    archive_parser = show_subparsers.add_parser('archive', help='show archive')
+    archive_parser.set_defaults(func=archive_subcommands)
+
+    # config subparser
+    config_parser = show_subparsers.add_parser('config', help='show fwgen configuration')
+    config_parser.set_defaults(func=config_subcommands)
+
+    # diff subparser
+    diff_parser = show_subparsers.add_parser('diff', help='diff configuration versions')
+    diff_parser.add_argument('archive', metavar='ARCHIVE',
+                             help='Diff current ruleset against archived version')
+    diff_parser.set_defaults(func=diff_subcommands)
+
+    # running subparser
+    running_parser = show_subparsers.add_parser('running', help='show running configuration')
+    running_parser.add_argument(
+        '--config',
+        dest='running_config_selection',
         choices=[
             'iptables',
             'fw4',
@@ -195,11 +219,9 @@ def _main():
             'ipsets',
             'all',
         ],
-        nargs='?',
-        const='all',
         help='Show running configuration'
     )
-    show_sub.set_defaults(func=show_subcommands)
+    running_parser.set_defaults(func=running_subcommands)
 
     args = parser.parse_args()
 
@@ -220,11 +242,14 @@ def _main():
             configdir.create()
             return 0
 
-        # Don't continue further if no subcommands are given
+        # Print help if no default function is defined
         try:
             getattr(args, 'func')
         except AttributeError:
-            parser.print_help()
+            if args.subcommand == 'show':
+                show_parser.print_help()
+            else:
+                parser.print_help()
             return 1
 
         config = merge_config(args.defaults, args.config, args.config_json)

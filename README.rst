@@ -123,11 +123,15 @@ To view changes between currently running and archived ruleset:
 
     fwgen show --diff <index|name>
 
-You can restore any archived ruleset, or alternatively give no value which means that fwgen restores the currently persisted version:
+You can restore your saved or archived rulesets:
 
 ::
 
-    fwgen apply --restore <index|name>
+    # Restores your currently saved ruleset
+    fwgen apply --restore
+
+    # Restores a ruleset from the archive
+    fwgen apply --archive <index|name>
 
 
 To view the currently running configuration:

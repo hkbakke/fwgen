@@ -693,7 +693,7 @@ class FwGen(object):
                          self.restore_file['ipset'])
         self._archive.clean(keep)
 
-    def _restore_archived(self, name):
+    def restore_archived(self, name):
         archive_file = self._archive.get(name)
         iptables = archive_file.iptables()
         ip6tables = archive_file.ip6tables()
@@ -701,7 +701,7 @@ class FwGen(object):
         LOGGER.info("Restoring ruleset from '%s'", archive_file.path)
         self._apply(iptables, ip6tables, ipsets)
 
-    def _restore_saved(self):
+    def restore(self):
         iptables = self.restore_file['ip']
         ip6tables = self.restore_file['ip6']
         ipsets = self.restore_file['ipset']
@@ -709,12 +709,6 @@ class FwGen(object):
         self.iptables.restore(iptables)
         self.ip6tables.restore(ip6tables)
         self.ipsets.restore(ipsets)
-
-    def restore(self, archive=None):
-        if archive is None:
-            self._restore_saved()
-        else:
-            self._restore_archived(archive)
 
     def _apply(self, ip_rules, ip6_rules, ipsets):
         # Apply ipsets first to ensure they exist when the rules are applied

@@ -92,8 +92,10 @@ def apply_subcommands(args, config):
             fw.clear()
             LOGGER.warning('Firewall cleared!')
         elif args.restore:
-            fw.restore(args.restore)
+            fw.restore()
             LOGGER.info('Ruleset restored!')
+        elif args.archive:
+            fw.restore_archived(args.archive)
         else:
             LOGGER.info('Applying ruleset...')
             fw.apply()
@@ -158,8 +160,10 @@ def _main():
                                 'includes archiving and service configuration.')
     apply_mutex_1 = apply_sub.add_mutually_exclusive_group()
     apply_mutex_1.add_argument('--clear', action='store_true', help='Clear the ruleset')
-    apply_mutex_1.add_argument('--restore', metavar='ARCHIVE', default=False, nargs='?',
-                               const=None, help='Restore saved or archived ruleset')
+    apply_mutex_1.add_argument('--restore', action='store_true', default=False,
+                               help='Restore saved ruleset')
+    apply_mutex_1.add_argument('--archive', metavar='ARCHIVE',
+                               help='Restore archived ruleset')
     apply_mutex_2 = apply_sub.add_mutually_exclusive_group()
     apply_mutex_2.add_argument('--timeout', metavar='SECONDS', type=int, default=20,
                                help='Override timeout for rollback')

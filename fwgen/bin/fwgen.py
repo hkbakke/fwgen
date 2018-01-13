@@ -77,6 +77,8 @@ def show_subcommands(args, config):
         fw.diff_archive(args.diff)
     elif args.archive:
         fw.list_archive()
+    elif args.show_config:
+        print(json.dumps(config, indent=4))
     return 0
 
 def apply_subcommands(args, config):
@@ -168,6 +170,8 @@ def _main():
                               help='Diff current ruleset against archived version')
     show_mutex_1.add_argument('--archive', action='store_true',
                               help='List available archived rulesets')
+    show_mutex_1.add_argument('--config', dest='show_config', action='store_true',
+                              help='Show fwgen config')
     show_mutex_1.add_argument(
         '--running',
         choices=[

@@ -115,13 +115,13 @@ To list archived rulesets:
 
 ::
 
-    fwgen show --archive
+    fwgen show archive
 
 To view changes between currently running and archived ruleset:
 
 ::
 
-    fwgen show --diff <index|name>
+    fwgen show diff <index|name>
 
 You can restore your saved or archived rulesets:
 
@@ -138,7 +138,7 @@ To view the currently running configuration:
 
 ::
 
-    fwgen show --running
+    fwgen show running
 
 For troubleshooting:
 

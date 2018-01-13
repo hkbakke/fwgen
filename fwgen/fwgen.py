@@ -753,7 +753,7 @@ class FwGen(object):
     def _printable_diff(diff, header, indent=4):
         content = '\n'.join(diff)
         if not content:
-            return None
+            return ''
         return '%s\n\n%s\n' % (header, textwrap.indent(content, ' ' * indent))
 
     def _diff(self, iptables, ip6tables, ipsets, reverse=False):
@@ -763,20 +763,14 @@ class FwGen(object):
         ipt_diff_output = self._printable_diff(ipt_diff, 'iptables changes:')
         ip6t_diff_output = self._printable_diff(ip6t_diff, 'ip6tables changes:')
         ipsets_diff_output = self._printable_diff(ipsets_diff, 'ipsets changes:')
-
-        if ipt_diff_output:
-            LOGGER.info(ipt_diff_output)
-        if ip6t_diff_output:
-            LOGGER.info(ip6t_diff_output)
-        if ipsets_diff_output:
-            LOGGER.info(ipsets_diff_output)
+        return ipt_diff_output + ip6t_diff_output + ipsets_diff_output
 
     def diff_archive(self, name):
         archive_file = self._archive.get(name)
         ipt = archive_file.iptables()
         ip6t = archive_file.ip6tables()
         ipsets = archive_file.ipsets()
-        self._diff(ipt, ip6t, ipsets, reverse=True)
+        return self._diff(ipt, ip6t, ipsets, reverse=True)
 
     def list_archive(self):
         return self._archive.get_all_indexed()
@@ -817,7 +811,7 @@ class Rollback(FwGen):
         ipt_old = self.ip_rollback
         ip6t_old = self.ip6_rollback
         ipsets_old = self.ipsets_rollback
-        self._diff(ipt_old, ip6t_old, ipsets_old)
+        return self._diff(ipt_old, ip6t_old, ipsets_old)
 
     def rollback(self):
         self._apply(self.ip_rollback, self.ip6_rollback, self.ipsets_rollback)

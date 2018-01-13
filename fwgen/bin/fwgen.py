@@ -74,7 +74,9 @@ def show_subcommands(args, config):
             print('#\n#\n# IP6TABLES\n#')
             print('\n'.join(fw.running_ip6tables()))
     elif args.diff:
-        fw.diff_archive(args.diff)
+        diff = fw.diff_archive(args.diff)
+        if diff:
+            print(diff)
     elif args.archive:
         archive_files_indexed = list(fw.list_archive())
         width = max(len(str(len(archive_files_indexed))), len('INDEX'))
@@ -102,7 +104,9 @@ def apply_subcommands(args, config):
             LOGGER.info('Ruleset applied!')
 
         if not args.no_diff:
-            fw.diff()
+            diff = fw.diff()
+            if diff:
+                LOGGER.info(diff)
 
         LOGGER.info('Running check commands...')
         fw.check()

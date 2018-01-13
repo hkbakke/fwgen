@@ -76,7 +76,11 @@ def show_subcommands(args, config):
     elif args.diff:
         fw.diff_archive(args.diff)
     elif args.archive:
-        fw.list_archive()
+        archive_files_indexed = list(fw.list_archive())
+        width = max(len(str(len(archive_files_indexed))), len('INDEX'))
+        print('%s\tNAME' % 'INDEX'.ljust(width))
+        for index, archive_file in archive_files_indexed:
+            print('%s\t%s' % (str(index).ljust(width), archive_file.name))
     elif args.show_config:
         print(json.dumps(config, indent=4))
     return 0

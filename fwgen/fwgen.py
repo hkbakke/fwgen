@@ -785,11 +785,7 @@ class FwGen(object):
         self._diff(ipt, ip6t, ipsets, reverse=True)
 
     def list_archive(self):
-        archive_files_indexed = list(self._archive.get_all_indexed())
-        width = max(len(str(len(archive_files_indexed))), len('INDEX'))
-        print('%s\tNAME' % 'INDEX'.ljust(width))
-        for index, archive_file in archive_files_indexed:
-            print('%s\t%s' % (str(index).ljust(width), archive_file.name))
+        return self._archive.get_all_indexed()
 
     def running_iptables(self):
         return self.iptables.running()

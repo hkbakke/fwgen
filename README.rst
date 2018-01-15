@@ -121,7 +121,7 @@ To view changes between currently running and archived ruleset:
 
 ::
 
-    fwgen show diff <index|name>
+    fwgen show archive <index|name>
 
 You can restore your saved or archived rulesets:
 

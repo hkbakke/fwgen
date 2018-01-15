@@ -63,22 +63,21 @@ def merge_config(defaults_file, config_file, config_json=None):
 
 def archive_subcommands(args, config):
     fw = fwgen.FwGen(config)
-    archive_files_indexed = list(fw.list_archive())
-    width = max(len(str(len(archive_files_indexed))), len('INDEX'))
-    print('%s\tNAME' % 'INDEX'.ljust(width))
-    for index, archive_file in archive_files_indexed:
-        print('%s\t%s' % (str(index).ljust(width), archive_file.name))
+
+    if args.diff:
+        diff = fw.diff_archive(args.diff)
+        if diff:
+            print(diff)
+    else:
+        archive_files_indexed = list(fw.list_archive())
+        width = max(len(str(len(archive_files_indexed))), len('INDEX'))
+        print('%s\tNAME' % 'INDEX'.ljust(width))
+        for index, archive_file in archive_files_indexed:
+            print('%s\t%s' % (str(index).ljust(width), archive_file.name))
     return 0
 
 def config_subcommands(args, config):
     print(json.dumps(config, indent=4))
-    return 0
-
-def diff_subcommands(args, config):
-    fw = fwgen.FwGen(config)
-    diff = fw.diff_archive(args.archive)
-    if diff:
-        print(diff)
     return 0
 
 def running_subcommands(args, config):
@@ -193,17 +192,13 @@ def _main():
 
     # archive subparser
     archive_parser = show_subparsers.add_parser('archive', help='show archive')
+    archive_parser.add_argument('diff', metavar='INDEX|NAME', nargs='?',
+                                help='Show differences between running and archived ruleset')
     archive_parser.set_defaults(func=archive_subcommands)
 
     # config subparser
     config_parser = show_subparsers.add_parser('config', help='show fwgen configuration')
     config_parser.set_defaults(func=config_subcommands)
-
-    # diff subparser
-    diff_parser = show_subparsers.add_parser('diff', help='diff configuration versions')
-    diff_parser.add_argument('archive', metavar='ARCHIVE',
-                             help='Diff current ruleset against archived version')
-    diff_parser.set_defaults(func=diff_subcommands)
 
     # running subparser
     running_parser = show_subparsers.add_parser('running', help='show running configuration')

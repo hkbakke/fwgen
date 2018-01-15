@@ -203,7 +203,8 @@ def _main():
     # running subparser
     running_parser = show_subparsers.add_parser('running', help='show running configuration')
     running_parser.add_argument(
-        '--select',
+        'select',
+        nargs='?',
         choices=[
             'iptables',
             'fw4',
@@ -213,7 +214,7 @@ def _main():
             'ipsets',
             'all',
         ],
-        help='Show running configuration'
+        help='Show specific configuration'
     )
     running_parser.set_defaults(func=running_subcommands)
 

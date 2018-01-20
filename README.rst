@@ -103,7 +103,7 @@ In addition to rules defined in the config file you can add/override rules from 
 
 ::
 
-    fwgen --config-json '{"policy": {"filter": {"INPUT": "ACCEPT"}}}' firewall
+    fwgen --config-json '{"policy": {"filter": {"INPUT": "ACCEPT"}}}' apply
 
 To temporarily clear the running ruleset without overwriting the saved persistent ruleset:
 

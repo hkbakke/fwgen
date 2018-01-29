@@ -65,9 +65,9 @@ Installing from source
     . ./venv/bin/activate
     pip3 install wheel
     python3 setup.py clean --all bdist_wheel
-    deactivate  # Unless you only want to install it in your venv
+    deactivate
 
-    # On you target host
+    # On your target host
     apt install ipset python3-yaml python3-pip
     pip3 install dist/<build>.whl --upgrade
 

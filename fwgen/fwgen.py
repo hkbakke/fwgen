@@ -38,6 +38,7 @@ class RulesetError(Exception):
 class DeprecationError(Exception):
     pass
 
+
 class NonExistingArchiveError(Exception):
     pass
 

@@ -68,7 +68,7 @@
 # using '${object}'.
 # If the object value is recognized as either an IPv4 or IPv6 address the
 # iptable rules will be automatically tagged with '-4' or '-6' unless you have manually
-# tagged it already. If you list a mix IPv4 and IPv6 addresses fwgen will
+# tagged it already. If you list a mix of IPv4 and IPv6 addresses fwgen will
 # put the valid address combinations into either IPv4 or IPv6 automatically.
 # Another use case is to create multiprotocol objects, e.g. to be able to write a
 # single rule for both udp and tcp.

@@ -157,4 +157,4 @@ For a complete list of the functionality, see:
 .. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/config.yml
 .. _default configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/defaults.yml
 .. _fwgen.service: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/fwgen.service
-.. _helper script: https://github.com/hkbakke/fwgen/blob/master/fwgen/scripts/enable-systemd-service
+.. _helper script: https://github.com/hkbakke/fwgen/blob/master/scripts/enable-systemd-service

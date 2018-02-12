@@ -17,6 +17,15 @@ inefficient if not done right. It may not be worth the effort to install
 it if you just have a simple server where you want to allow a couple of
 incoming ports.
 
+It has built-in mechanisms to make remote unattended deployment of linux
+firewalls much more robust. If any kind of errors is encountered the ruleset
+is automatically rolled back to the previous running one.
+To solve the other issue with remote deployment of firewalls, the one where
+you deploy a valid ruleset, but you have managed to cut your own access,
+fwgen can run user defined checks that can automatically verify that the host
+is remotely accessible before storing the new ruleset. If the check command
+fails the ruleset will be rolled back.
+
 Advantages of using fwgen:
 
 - Integrates iptables, ip6tables and ipsets in a common management framework

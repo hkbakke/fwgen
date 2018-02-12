@@ -98,7 +98,8 @@ setup(
     package_data={
         'fwgen': [
             'etc/defaults.yml',
-            'etc/config.yml.example',
+            'doc/examples/config.yml',
+            'doc/examples/fwgen.service',
         ],
     },
 

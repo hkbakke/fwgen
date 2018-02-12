@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+import fwgen
+import sys
+import shutil
+import subprocess
+from pathlib import Path
+
+
+name = 'fwgen.service'
+fwgen_path = Path(fwgen.__file__)
+example_file = fwgen_path.parent / 'doc' / 'examples'/ 'fwgen.service'
+unit_file = Path('/etc/systemd/system') / Path(name)
+
+
+def main():
+    shutil.copyfile(str(example_file), str(unit_file))
+    unit_file.chmod(0o644)
+
+    subprocess.check_call(['systemctl', 'daemon-reload'])
+    subprocess.check_call(['systemctl', 'enable', name])
+    subprocess.check_call(['systemctl', 'restart', name])
+
+    print("Enabled systemd service '%s'" % name)
+
+if __name__ == '__main__':
+    sys.exit(main())

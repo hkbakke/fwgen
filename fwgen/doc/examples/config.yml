@@ -8,11 +8,6 @@
 #  path: /var/lib/fwgen/archive
 #  keep: 10
 
-# fwgen by default manages its own systemd service for persistence between reboots
-#systemd_service:
-#  enable: True
-#  name: fwgen
-
 # Add check commands here to verify connectivity after the firewall ruleset has
 # been applied. The check commands must return exit code 0 or the firewall will
 # rollback the configuration. Shell features are not supported.

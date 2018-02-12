@@ -53,6 +53,8 @@ Installation
 
 PyYAML is pulled in as a dependency automatically via pip, but you may get a compiler error if you do not have the correct dependencies installed. It will still work however, just not as fast. I recommend using the distro packaged version if you have it available. In Debian's case that is ``python3-yaml``.
 
+To ensure persistence you must have something that loads the ruleset at boot. An example systemd service is included in `fwgen.service`_. As not all distros use systemd it is not enabled automatically, but a `helper script`_ is available to enable or update the service.
+
 Installing from source
 ======================
 
@@ -152,5 +154,7 @@ For a complete list of the functionality, see:
 
     fwgen --help
 
-.. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/config.yml.example
+.. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/config.yml
 .. _default configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/defaults.yml
+.. _fwgen.service: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/fwgen.service
+.. _helper script: https://github.com/hkbakke/fwgen/blob/master/fwgen/scripts/enable-systemd-service

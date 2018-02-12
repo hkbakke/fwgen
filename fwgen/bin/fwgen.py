@@ -136,7 +136,6 @@ def apply_subcommands(args, config):
             fw.save()
             if not args.no_archive:
                 fw.archive()
-            fw.service()
             LOGGER.info('Ruleset saved!')
 
 def _main():
@@ -172,7 +171,7 @@ def _main():
                               help='Do not archive the saved ruleset')
     apply_parser.add_argument('--no-save', action='store_true',
                               help='Apply the ruleset but do not make it persistent. This also '
-                                   'includes archiving and service configuration.')
+                                   'includes archiving.')
     apply_mutex_1 = apply_parser.add_mutually_exclusive_group()
     apply_mutex_1.add_argument('--clear', action='store_true', help='Clear the ruleset')
     apply_mutex_1.add_argument('--restore', action='store_true', default=False,

@@ -1,0 +1,14 @@
+[Unit]
+Description=fwgen firewall
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/ipset restore -exist -file /var/lib/fwgen/rules/ipsets.restore
+ExecStart=/sbin/iptables-restore /var/lib/fwgen/rules/iptables.restore
+ExecStart=/sbin/ip6tables-restore /var/lib/fwgen/rules/ip6tables.restore
+ExecReload=/usr/local/bin/fwgen apply --restore --no-confirm --no-diff --no-archive
+ExecStop=/usr/local/bin/fwgen apply --clear --no-save --no-confirm --no-diff
+
+[Install]
+WantedBy=multi-user.target

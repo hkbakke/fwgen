@@ -2,7 +2,6 @@ import re
 import subprocess
 import logging
 import shutil
-import filecmp
 import shlex
 import ipaddress
 import difflib
@@ -240,96 +239,11 @@ class Ipsets(Ruleset):
             yield entry
 
 
-class FirewallService(object):
-    def __init__(self, name, iptables, ip6tables, ipsets):
-        """ Take the ruleset objects as input """
-        self.iptables = iptables
-        self.ip6tables = ip6tables
-        self.ipsets = ipsets
-        self.name = name
-        self.unitfile = Path('/etc/systemd/system') / Path('%s.service' % name)
-
-    def create(self):
-        tmp = self.unitfile.with_suffix('.tmp')
-        with tmp.open('w') as f:
-            for item in self._get_content():
-                f.write('%s\n' % item)
-
-        if self.unitfile.exists() and filecmp.cmp(str(self.unitfile), str(tmp)):
-            LOGGER.debug("'%s' do not need updating", self.unitfile)
-            tmp.unlink()
-            return
-
-        tmp.chmod(0o644)
-        LOGGER.debug("Updating '%s'", self.unitfile)
-        tmp.rename(self.unitfile)
-        self.reload()
-
-    def _enable(self):
-        cmd = ['systemctl', 'enable', self.unitfile.name]
-        run_command(cmd)
-
-    def enable(self):
-        self.create()
-        LOGGER.debug("Enabling service '%s'", self.name)
-        self._enable()
-
-    def _disable(self):
-        cmd = ['systemctl', 'disable', self.unitfile.name]
-        run_command(cmd)
-
-    def disable(self):
-        if self.unitfile.exists():
-            LOGGER.debug("Disabling service '%s'", self.name)
-            self.stop()
-            self._disable()
-            self.unitfile.unlink()
-            self.reload()
-        else:
-            LOGGER.debug("Service '%s' is disabled", self.name)
-
-    def start(self):
-        LOGGER.debug("Starting service '%s'", self.name)
-        run_command(['systemctl', 'start', self.unitfile.name])
-
-    def stop(self):
-        LOGGER.debug("Stopping service '%s'", self.name)
-        run_command(['systemctl', 'stop', self.unitfile.name])
-
-    @staticmethod
-    def reload():
-        LOGGER.debug('Reloading systemd service configuration')
-        run_command(['systemctl', 'daemon-reload'])
-
-    def _get_content(self):
-        fwgen_cmd = shutil.which('fwgen')
-        content = [
-            '[Unit]',
-            'Description=fwgen firewall',
-            '',
-            '[Service]',
-            'Type=oneshot',
-            'RemainAfterExit=yes',
-            'ExecStart=%s -exist -file "%s"' % (
-                ' '.join(self.ipsets.restore_cmd), self.ipsets.restore_file),
-            'ExecStart=%s "%s"' % (
-                ' '.join(self.iptables.restore_cmd), self.iptables.restore_file),
-            'ExecStart=%s "%s"' % (
-                ' '.join(self.ip6tables.restore_cmd), self.ip6tables.restore_file),
-            'ExecReload=%s apply --restore --no-confirm --no-diff --no-archive' % fwgen_cmd,
-            'ExecStop=%s apply --clear --no-save --no-confirm --no-diff' % fwgen_cmd,
-            '',
-            '[Install]',
-            'WantedBy=multi-user.target'
-        ]
-        return content
-
-
 class ConfigDir(object):
     def __init__(self, dirname):
         self.dirname = dirname
         self.config = self.dirname / 'config.yml'
-        self.example_config = Path(__file__).parent / 'etc' / 'config.yml.example'
+        self.example_config = Path(__file__).parent / 'doc' / 'examples' / 'config.yml'
 
     def create(self):
         LOGGER.info("Ensuring '%s' exists...", self.dirname)
@@ -461,15 +375,11 @@ class FwGen(object):
                 'ipsets': '/var/lib/fwgen/rules/ipsets.restore'
             },
             'cmds': {
-                'iptables_save': shutil.which('iptables-save'),
-                'iptables_restore': shutil.which('iptables-restore'),
-                'ip6tables_save': shutil.which('ip6tables-save'),
-                'ip6tables_restore': shutil.which('ip6tables-restore'),
-                'ipset': shutil.which('ipset')
-            },
-            'systemd_service': {
-                'enable': True,
-                'name': 'fwgen'
+                'iptables_save': 'iptables-save',
+                'iptables_restore': 'iptables-restore',
+                'ip6tables_save': 'ip6tables-save',
+                'ip6tables_restore': 'ip6tables-restore',
+                'ipset': 'ipset'
             },
             'archive': {
                 'path': '/var/lib/fwgen/archive',
@@ -740,15 +650,6 @@ class FwGen(object):
         self.iptables.clear()
         self.ip6tables.clear()
         self.ipsets.clear()
-
-    def service(self):
-        service = FirewallService(self.config['systemd_service']['name'], self.iptables,
-                                  self.ip6tables, self.ipsets)
-        if self.config['systemd_service']['enable']:
-            service.enable()
-            service.start()
-        else:
-            service.disable()
 
     @staticmethod
     def _printable_diff(diff, header, indent=4):

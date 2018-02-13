@@ -441,20 +441,10 @@ class FwGen(object):
 
     def _get_zone_rules(self):
         for zone, params in self.config.get('zones', {}).items():
-            zone_id = self._get_zone_id(zone)
-            LOGGER.debug("Zone ID for zone '%s': %d", zone, zone_id)
-            for table, chains in params.get('rules', {}).items():
-                for chain, chain_rules in chains.items():
-                    zone_chain = 'ZONE%d_%s' % (zone_id, chain)
-                    for rule in chain_rules:
-                        yield (table, '-A %s %s' % (zone_chain, rule))
-
-    def _get_global_rules(self):
-        """ Return the rules from the global ruleset hooks in correct order """
-        for ruleset in ['pre_default', 'default', 'pre_zone']:
-            rules = self.config.get(ruleset, {})
-            for rule in self._get_rules(rules):
-                yield rule
+            if zone == 'local':
+                yield from self._create_local_zone(zone, params.get('rules', {}))
+            else:
+                yield from self._create_zone(zone, params.get('rules', {}))
 
     def _get_helper_chains(self):
         rules = {}
@@ -481,20 +471,98 @@ class FwGen(object):
     def _new_chain(chain):
         return ':%s -' % chain
 
-    def _get_zone_dispatchers(self):
-        for zone, params in self.config.get('zones', {}).items():
-            zone_id = self._get_zone_id(zone)
-            for table, chains in params.get('rules', {}).items():
-                for chain in chains:
-                    dispatcher_chain = 'ZONE%d_%s' % (zone_id, chain)
-                    yield (table, self._new_chain(dispatcher_chain))
+    def _create_zone_forward(self, zone, target):
+        chain = 'FORWARD'
+        yield from self._create_zone_in(zone, chain, target)
 
-                    if chain in ['PREROUTING', 'INPUT', 'FORWARD']:
-                        yield (table, '-A %s -i %%{%s} -j %s' % (chain, zone, dispatcher_chain))
-                    elif chain in ['OUTPUT', 'POSTROUTING']:
-                        yield (table, '-A %s -o %%{%s} -j %s' % (chain, zone, dispatcher_chain))
-                    else:
-                        raise InvalidChain('%s is not a valid built-in chain' % chain)
+        # Accept intra-zone traffic
+        comment = 'Intra-zone'
+        yield '-A %s -o %%{%s} -m comment --comment "%s" -j ACCEPT' % (target, zone, comment)
+
+    def _create_zone_in(self, zone, chain, target, comment=None):
+        yield self._new_chain(target)
+        if comment:
+            yield '-A %s -i %%{%s} -m comment --comment "%s" -j %s' % (chain, zone, comment, target)
+        else:
+            yield '-A %s -i %%{%s} -j %s' % (chain, zone, target)
+
+    def _create_zone_out(self, zone, chain, target, comment=None):
+        yield self._new_chain(target)
+        if comment:
+            yield '-A %s -o %%{%s} -m comment --comment "%s" -j %s' % (chain, zone, comment, target)
+        else:
+            yield '-A %s -o %%{%s} -j %s' % (chain, zone, target)
+
+    def _create_to_zones(self, zone, to_zones):
+        zone_id = self._get_zone_id(zone)
+        zone_chain_name = 'zone%d' % zone_id
+        target = '%s_FORWARD' % zone_chain_name
+        yield from self._create_zone_forward(zone, target)
+
+        for to_zone, rules in to_zones.items():
+            if to_zone == 'local':
+                to_target = '%s_to_%s' % (zone_chain_name, to_zone)
+                comment = '%s -> %s' % (zone, to_zone)
+                yield from self._create_zone_in(zone, 'INPUT', to_target, comment)
+            else:
+                to_zone_id = self._get_zone_id(to_zone)
+                to_zone_chain_name = 'zone%d' % to_zone_id
+                to_target = '%s_to_%s' % (zone_chain_name, to_zone_chain_name)
+                comment = '%s -> %s' % (zone, to_zone)
+                yield from self._create_zone_out(to_zone, target, to_target, comment)
+
+            for rule in rules:
+                yield '-A %s %s' % (to_target, rule)
+
+    def _create_local_zone(self, zone, rules):
+        for table, chains in rules.items():
+            for chain in chains:
+                if chain == 'to':
+                    for to_zone, to_zone_rules in chains['to'].items():
+                        to_zone_id = self._get_zone_id(to_zone)
+                        target = '%s_to_zone%d' % (zone, to_zone_id)
+                        comment = '%s -> %s' % (zone, to_zone)
+                        for rule in self._create_zone_out(to_zone, 'OUTPUT', target, comment):
+                            yield (table, rule)
+
+                        for rule in to_zone_rules:
+                            yield (table, '-A %s %s' % (target, rule))
+                else:
+                    raise InvalidChain("'%s' is not a valid target chain" % chain)
+
+    def _create_zone(self, zone, rules):
+        # Normalize zone name to avoid being restricted by max chain name length
+        zone_id = self._get_zone_id(zone)
+        zone_chain_name = 'zone%d' % zone_id
+        LOGGER.debug("Zone ID for zone '%s': %d", zone, zone_id)
+
+        for table, chains in rules.items():
+            for chain, items in chains.items():
+                target = '%s_%s' % (zone_chain_name, chain)
+
+                if chain in ['PREROUTING', 'INPUT']:
+                    for rule in self._create_zone_in(zone, chain, target):
+                        yield (table, rule)
+                elif chain == 'FORWARD':
+                    for rule in self._create_zone_forward(zone, target):
+                        yield (table, rule)
+                elif chain == 'to':
+                    for i in ['INPUT', 'FORWARD', 'OUTPUT']:
+                        if i in chains:
+                            raise InvalidChain("Error in zone '%s': '%s' can not be combined "
+                                               "with '%s'" % (zone, i, chain))
+
+                    for rule in self._create_to_zones(zone, items):
+                        yield (table, rule)
+                elif chain in ['OUTPUT', 'POSTROUTING']:
+                    for rule in self._create_zone_out(zone, chain, target):
+                        yield (table, rule)
+                else:
+                    raise InvalidChain("'%s' is not a valid target chain" % chain)
+
+                if isinstance(items, list):
+                    for rule in items:
+                        yield (table, '-A %s %s' % (target, rule))
 
     def _expand_zones(self, rule):
         match = re.search(self.zone_pattern, rule)
@@ -639,10 +707,12 @@ class FwGen(object):
         rules = []
         rules.extend(self._get_policy_rules())
         rules.extend(self._get_helper_chains())
-        rules.extend(self._get_global_rules())
-        rules.extend(self._get_zone_dispatchers())
+        rules.extend(self._get_rules(self.config.get('pre_default', {})))
+        rules.extend(self._get_rules(self.config.get('default', {})))
+        rules.extend(self._get_rules(self.config.get('pre_zone', {})))
         rules.extend(self._get_zone_rules())
         iptables_rules = self._output_rules(rules)
+        LOGGER.debug('\n'.join(iptables_rules))
         self._apply(iptables_rules, iptables_rules, self._output_ipsets())
 
     def clear(self):

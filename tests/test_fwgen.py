@@ -247,11 +247,17 @@ class TestFwGen(object):
         ]
         fw = fwgen.FwGen(config)
         rule_list = [
-            ('filter', '-A ZONE0_INPUT -p tcp --dport 22 -j ACCEPT'),
-            ('filter', '-A ZONE0_INPUT -p icmp --icmp-type echo-request -j ACCEPT'),
-            ('filter', '-A ZONE0_INPUT -j CUSTOM_REJECT'),
-            ('filter', '-A ZONE0_OUTPUT -j ACCEPT'),
-            ('nat', '-A ZONE0_POSTROUTING -j MASQUERADE')
+            ('filter', ':zone0_INPUT -'),
+            ('filter', '-A INPUT -i %{LAN} -j zone0_INPUT'),
+            ('filter', '-A zone0_INPUT -p tcp --dport 22 -j ACCEPT'),
+            ('filter', '-A zone0_INPUT -p icmp --icmp-type echo-request -j ACCEPT'),
+            ('filter', '-A zone0_INPUT -j CUSTOM_REJECT'),
+            ('filter', ':zone0_OUTPUT -'),
+            ('filter', '-A OUTPUT -o %{LAN} -j zone0_OUTPUT'),
+            ('filter', '-A zone0_OUTPUT -j ACCEPT'),
+            ('nat', ':zone0_POSTROUTING -'),
+            ('nat', '-A POSTROUTING -o %{LAN} -j zone0_POSTROUTING'),
+            ('nat', '-A zone0_POSTROUTING -j MASQUERADE')
         ]
         assert list(fw._get_zone_rules()) == rule_list
 

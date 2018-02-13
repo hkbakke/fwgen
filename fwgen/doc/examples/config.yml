@@ -164,10 +164,9 @@
 #        POSTROUTING:
 #          - -4 -j MASQUERADE
 
-
-# Example with zone to zone rules and port forwarding. Use %{zone_name} whenever
-# you would use interface names in native iptables to automatically generate the
-# needed rules.
+# Example with zone to zone rules and port forwarding using the older zone FORWARD
+# syntax. Use %{zone_name} whenever you would use interface names in native iptables
+# to automatically generate the needed rules.
 
 #objects:
 #  web_server: 10.0.0.10
@@ -182,10 +181,6 @@
 #        INPUT:
 #          - -j ACCEPT
 #        FORWARD:
-#          # Intra-zone forwarding is not allowed by default, so add this if you want
-#          # to enable free flow between zone interfaces
-#          - -o %{LAN} -j ACCEPT
-#
 #          - -o %{WAN} -j ACCEPT
 #          - -o %{DMZ} -j ACCEPT
 #          - -j CUSTOM_REJECT
@@ -223,13 +218,72 @@
 #        OUTPUT:
 #          - -j ACCEPT
 
+# You may also use the newer syntax. This should generate more efficient rulesets if
+# you have multiple zones with multiple interfaces and many zone rules. "local" is
+# the only reserved zone as it is for INPUT and OUTPUT traffic to the the gateway
+# itself. You do not assign interfaces to "local". If you do not define a from/to
+# zone for a flow the default policy is hit. Intra-zone flows are allowed by default.
+#
+# The same example as above with the newer syntax:
+#
+#zones:
+#  local:
+#    rules:
+#      filter:
+#        to:
+#          LAN:
+#            - -j ACCEPT
+#          WAN:
+#            - -j ACCEPT
+#          DMZ:
+#            - -j ACCEPT
+#  LAN:
+#    interfaces:
+#      - eth0
+#      - eth3
+#    rules:
+#      filter:
+#        to:
+#          local:
+#            - -j ACCEPT
+#          WAN:
+#            - -j ACCEPT
+#          DMZ:
+#            - -j ACCEPT
+#  WAN:
+#    interfaces:
+#      - eth1
+#    rules:
+#      filter:
+#        to:
+#          DMZ:
+#            - -d ${web_server} -p tcp --dport 80 -j ACCEPT
+#      nat:
+#        PREROUTING:
+#          - -4 -p tcp --dport 80 -j DNAT --to-destination ${web_server}
+#        POSTROUTING:
+#          - -4 -j MASQUERADE
+#  DMZ:
+#    interfaces:
+#      - eth2
+#    rules:
+#      filter:
+#        to:
+#          local:
+#            - -4 -p icmp --imcp-type echo-request -j ACCEPT
+#            - -6 -p icmpv6 --icmpv6-type echo-request -j ACCEPT
+#            - -6 -p icmpv6 --icmpv6-type neighbor-solicitation -j ACCEPT
+#            - -6 -p icmpv6 --icmpv6-type neighbor-advertisement -j ACCEPT
+#            - -6 -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT
+#            - -j CUSTOM_REJECT
+#          WAN:
+#            - -j ACCEPT
+
 # ---- initial config start ----
 #
-# Please comment out or remove this block after you have configured your firewall.
-# This is just a safety net to prevent you from full connectivity loss if fwgen
-# is executed without being configured after '--create-config-dir' has been run
-#
-
+# Please remove this after having configured your firewall. This is just a safety
+# net to prevent you from full connectivity loss if fwgen is executed without being
+# configured after '--create-config-dir' has been run
 pre_zone:
   filter:
     INPUT:

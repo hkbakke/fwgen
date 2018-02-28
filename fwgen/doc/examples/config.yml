@@ -142,128 +142,81 @@
 # There is no need to add rules for return traffic as these are added at the
 # top of the ruleset via defaults.yml for maximum efficiency.
 #zones:
-#  LAN:
+#  local:
+#    rules:
+#      filter:
+#        to:
+#          lan:
+#            - -j ACCEPT
+#          wan:
+#            - -j ACCEPT
+#  lan:
 #    interfaces:
 #      - eth0
 #    rules:
 #      filter:
-#        INPUT:
-#          - -j ACCEPT
-#        FORWARD:
-#          - -j ACCEPT
-#        OUTPUT:
-#          - -j ACCEPT
-#  WAN:
+#        to:
+#          local:
+#            - -j ACCEPT
+#          wan:
+#            - -j ACCEPT
+#  wan:
 #    interfaces:
 #      - eth1
 #    rules:
-#      filter:
-#        OUTPUT:
-#          - -j ACCEPT
 #      nat:
 #        POSTROUTING:
 #          - -4 -j MASQUERADE
 
-# Example with zone to zone rules and port forwarding using the older zone FORWARD
-# syntax. Use %{zone_name} whenever you would use interface names in native iptables
-# to automatically generate the needed rules.
-
-#objects:
-#  web_server: 10.0.0.10
-
-#zones:
-#  LAN:
-#    interfaces:
-#      - eth0
-#      - eth3
-#    rules:
-#      filter:
-#        INPUT:
-#          - -j ACCEPT
-#        FORWARD:
-#          - -o %{WAN} -j ACCEPT
-#          - -o %{DMZ} -j ACCEPT
-#          - -j CUSTOM_REJECT
-#        OUTPUT:
-#          - -j ACCEPT
-#  WAN:
-#    interfaces:
-#      - eth1
-#    rules:
-#      filter:
-#        FORWARD:
-#          - -o %{DMZ} -d ${web_server} -p tcp --dport 80 -j ACCEPT
-#        OUTPUT:
-#          - -j ACCEPT
-#      nat:
-#        PREROUTING:
-#          - -4 -p tcp --dport 80 -j DNAT --to-destination ${web_server}
-#        POSTROUTING:
-#          - -4 -j MASQUERADE
-#  DMZ:
-#    interfaces:
-#      - eth2
-#    rules:
-#      filter:
-#        INPUT:
-#          - -4 -p icmp --imcp-type echo-request -j ACCEPT
-#          - -6 -p icmpv6 --icmpv6-type echo-request -j ACCEPT
-#          - -6 -p icmpv6 --icmpv6-type neighbor-solicitation -j ACCEPT
-#          - -6 -p icmpv6 --icmpv6-type neighbor-advertisement -j ACCEPT
-#          - -6 -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT
-#          - -j CUSTOM_REJECT
-#        FORWARD:
-#          - -o %{WAN} -j ACCEPT
-#          - -j CUSTOM_REJECT
-#        OUTPUT:
-#          - -j ACCEPT
-
-# You may also use the newer syntax. This should generate more efficient rulesets if
-# you have multiple zones with multiple interfaces and many zone rules. "local" is
-# the only reserved zone as it is for INPUT and OUTPUT traffic to the the gateway
+# local" is a reserved zone as it is for INPUT and OUTPUT traffic to the the gateway
 # itself. You do not assign interfaces to "local". If you do not define a from/to
-# zone for a flow the default policy is hit. Intra-zone flows are allowed by default.
+# zone for a flow the default policy is hit. Intra-zone flows are allowed by default,
+# but this can be controlled per zone.
 #
-# The same example as above with the newer syntax:
+# Here's a little bit more complex example
+#
+#objects:
+#  web_server: 10.0.0.100
 #
 #zones:
 #  local:
 #    rules:
 #      filter:
 #        to:
-#          LAN:
+#          lan:
 #            - -j ACCEPT
-#          WAN:
+#          wan:
 #            - -j ACCEPT
-#          DMZ:
+#          dmz:
 #            - -j ACCEPT
-#  LAN:
+#  lan:
 #    interfaces:
 #      - eth0
 #      - eth3
+#    block_intra_zone: true
 #    rules:
 #      filter:
 #        to:
 #          local:
 #            - -j ACCEPT
-#          WAN:
+#          wan:
 #            - -j ACCEPT
-#          DMZ:
+#          dmz:
 #            - -j ACCEPT
-#  WAN:
+#  wan:
 #    interfaces:
 #      - eth1
 #    rules:
 #      filter:
 #        to:
-#          DMZ:
+#          dmz:
 #            - -d ${web_server} -p tcp --dport 80 -j ACCEPT
 #      nat:
 #        PREROUTING:
 #          - -4 -p tcp --dport 80 -j DNAT --to-destination ${web_server}
 #        POSTROUTING:
 #          - -4 -j MASQUERADE
-#  DMZ:
+#  dmz:
 #    interfaces:
 #      - eth2
 #    rules:
@@ -276,7 +229,7 @@
 #            - -6 -p icmpv6 --icmpv6-type neighbor-advertisement -j ACCEPT
 #            - -6 -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT
 #            - -j CUSTOM_REJECT
-#          WAN:
+#          wan:
 #            - -j ACCEPT
 
 # ---- initial config start ----

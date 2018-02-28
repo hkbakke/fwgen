@@ -173,6 +173,9 @@
 # zone for a flow the default policy is hit. Intra-zone flows are allowed by default,
 # but this can be controlled per zone.
 #
+# You also have a special 'default' to-zone available. This zone do not have a zone
+# definition and it is only processed if there are no matches in the other zones.
+#
 # Here's a little bit more complex example
 #
 #objects:
@@ -183,17 +186,13 @@
 #    rules:
 #      filter:
 #        to:
-#          lan:
-#            - -j ACCEPT
-#          wan:
-#            - -j ACCEPT
-#          dmz:
+#          default:
 #            - -j ACCEPT
 #  lan:
 #    interfaces:
 #      - eth0
 #      - eth3
-#    block_intra_zone: true
+#    allow_intra_zone: false
 #    rules:
 #      filter:
 #        to:

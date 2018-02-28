@@ -385,10 +385,11 @@ class FwGen(object):
                 'path': '/var/lib/fwgen/archive',
                 'keep': 10
             },
-            'check_commands': [],
-            'local_zone': 'local'
+            'check_commands': []
         }
         self.config = ordered_dict_merge(config, defaults)
+        self.local_zone = 'local'
+        self.default_zone = 'default'
         self._deprecation_check()
         self.iptables = Iptables(self.config['cmds']['iptables_save'],
                                  self.config['cmds']['iptables_restore'])
@@ -440,13 +441,18 @@ class FwGen(object):
     def _get_zone_id(self, zone):
         return list(self.config.get('zones', {}).keys()).index(zone)
 
+    def _get_zone_name(self, zone):
+        if zone in [self.local_zone, self.default_zone]:
+            return zone
+        return 'zone%d' % self._get_zone_id(zone)
+
     def _get_zone_rules(self):
         for zone, params in self.config.get('zones', {}).items():
-            if zone == self.config['local_zone']:
+            if zone == self.local_zone:
                 yield from self._create_local_zone(zone, params.get('rules', {}))
             else:
                 yield from self._create_zone(zone, params.get('rules', {}),
-                                             params.get('block_intra_zone', False))
+                                             params.get('allow_intra_zone', True))
 
     def _get_helper_chains(self):
         rules = {}
@@ -473,11 +479,11 @@ class FwGen(object):
     def _new_chain(chain):
         return ':%s -' % chain
 
-    def _create_zone_forward(self, zone, target, block_intra_zone=False):
+    def _create_zone_forward(self, zone, target, allow_intra_zone=True):
         chain = 'FORWARD'
         yield from self._create_zone_in(zone, chain, target)
 
-        if not block_intra_zone:
+        if allow_intra_zone:
             comment = 'Intra-zone'
             yield '-A %s -o %%{%s} -m comment --comment "%s" -j ACCEPT' % (target, zone, comment)
 
@@ -495,46 +501,48 @@ class FwGen(object):
         else:
             yield '-A %s -o %%{%s} -j %s' % (chain, zone, target)
 
-    def _create_to_zones(self, zone, target, to_zones):
-        zone_id = self._get_zone_id(zone)
-        zone_name = 'zone%d' % zone_id
+    def _create_to_zones(self, zone, target, target_local, to_zones):
+        zone_name = self._get_zone_name(zone)
 
         for to_zone, rules in to_zones.items():
-            if to_zone == self.config['local_zone']:
-                to_target = '%s_to_%s' % (zone_name, to_zone)
-                comment = '%s -> %s' % (zone, to_zone)
-                yield from self._create_zone_in(zone, 'INPUT', to_target, comment)
+            to_zone_name = self._get_zone_name(to_zone)
+            to_target = '%s_to_%s' % (zone_name, to_zone_name)
+            comment = '%s -> %s' % (zone, to_zone)
+
+            if to_zone == self.default_zone:
+                continue
+            elif to_zone == self.local_zone and target_local:
+                yield self._new_chain(to_target)
+                yield '-A %s -m comment --comment "%s" -j %s' % (target_local, comment, to_target)
             else:
-                to_zone_id = self._get_zone_id(to_zone)
-                to_zone_name = 'zone%d' % to_zone_id
-                to_target = '%s_to_%s' % (zone_name, to_zone_name)
-                comment = '%s -> %s' % (zone, to_zone)
                 yield from self._create_zone_out(to_zone, target, to_target, comment)
 
             for rule in rules:
                 yield '-A %s %s' % (to_target, rule)
 
+        # Default chain must be put last
+        if self.default_zone in to_zones:
+            default_target = '%s_%s' % (zone_name, self._get_zone_name(self.default_zone))
+            yield self._new_chain(default_target)
+            yield '-A %s -j %s' % (target, default_target)
+            if target_local:
+                yield '-A %s -j %s' % (target_local, default_target)
+
+            for rule in to_zones.get(self.default_zone, []):
+                yield '-A %s %s' % (default_target, rule)
+
     def _create_local_zone(self, zone, rules):
         for table, chains in rules.items():
             for chain in chains:
                 if chain == 'to':
-                    for to_zone, to_zone_rules in chains['to'].items():
-                        to_zone_id = self._get_zone_id(to_zone)
-                        target = '%s_to_zone%d' % (zone, to_zone_id)
-                        comment = '%s -> %s' % (zone, to_zone)
-                        for rule in self._create_zone_out(to_zone, 'OUTPUT', target, comment):
-                            yield (table, rule)
-
-                        for rule in to_zone_rules:
-                            yield (table, '-A %s %s' % (target, rule))
+                    target = 'OUTPUT'
+                    for rule in self._create_to_zones(zone, target, None, chains[chain]):
+                        yield (table, rule)
                 else:
                     raise InvalidChain("'%s' is not a valid target chain" % chain)
 
-    def _create_zone(self, zone, rules, block_intra_zone=False):
-        # Normalize zone name to avoid being restricted by max chain name length
-        zone_id = self._get_zone_id(zone)
-        zone_name = 'zone%d' % zone_id
-        LOGGER.debug("Zone ID for zone '%s': %d", zone, zone_id)
+    def _create_zone(self, zone, rules, allow_intra_zone=True):
+        zone_name = self._get_zone_name(zone)
 
         for table, chains in rules.items():
             for chain, items in chains.items():
@@ -544,7 +552,7 @@ class FwGen(object):
                     for rule in self._create_zone_in(zone, chain, target):
                         yield (table, rule)
                 elif chain == 'FORWARD':
-                    for rule in self._create_zone_forward(zone, target, block_intra_zone):
+                    for rule in self._create_zone_forward(zone, target, allow_intra_zone):
                         yield (table, rule)
                 elif chain == 'to':
                     for i in ['INPUT', 'FORWARD', 'OUTPUT']:
@@ -552,11 +560,15 @@ class FwGen(object):
                             raise InvalidChain("Error in zone '%s': '%s' can not be combined "
                                                "with '%s'" % (zone, i, chain))
 
-                    target = '%s_FORWARD' % zone_name
-                    for rule in self._create_zone_forward(zone, target, block_intra_zone):
+                    target_local = '%s_INPUT' % zone_name
+                    for rule in self._create_zone_in(zone, 'INPUT', target_local):
                         yield (table, rule)
 
-                    for rule in self._create_to_zones(zone, target, items):
+                    target = '%s_FORWARD' % zone_name
+                    for rule in self._create_zone_forward(zone, target, allow_intra_zone):
+                        yield (table, rule)
+
+                    for rule in self._create_to_zones(zone, target, target_local, items):
                         yield (table, rule)
                 elif chain in ['OUTPUT', 'POSTROUTING']:
                     for rule in self._create_zone_out(zone, chain, target):

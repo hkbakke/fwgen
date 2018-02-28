@@ -337,4 +337,4 @@ class TestFwGen(object):
         fw = fwgen.FwGen(config)
         zone = 'lan'
         target = 'zone0_FORWARD'
-        assert list(fw._create_zone_forward(zone, target, True)) == output
+        assert list(fw._create_zone_forward(zone, target, False)) == output

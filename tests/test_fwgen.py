@@ -302,4 +302,39 @@ class TestFwGen(object):
             'add no_proxy_v4 10.0.0.1',
             'add no_proxy_v4 10.0.6.14'
         ]
-        assert list(fwgen.Ipsets._diff_filter(diff)) == list(output)
+        assert list(fwgen.Ipsets._diff_filter(diff)) == output
+
+    def test_create_zone_forward(self):
+        config = {
+            'zones': {
+                'lan': {
+                    'interfaces': ['eth0', 'eth1']
+                }
+            }
+        }
+        output = [
+            ':zone0_FORWARD -',
+            '-A FORWARD -i %{lan} -j zone0_FORWARD',
+            '-A zone0_FORWARD -o %{lan} -m comment --comment "Intra-zone" -j ACCEPT'
+        ]
+        fw = fwgen.FwGen(config)
+        zone = 'lan'
+        target = 'zone0_FORWARD'
+        assert list(fw._create_zone_forward(zone, target)) == output
+
+    def test_create_zone_forward_block_intra(self):
+        config = {
+            'zones': {
+                'lan': {
+                    'interfaces': ['eth0', 'eth1'],
+                }
+            }
+        }
+        output = [
+            ':zone0_FORWARD -',
+            '-A FORWARD -i %{lan} -j zone0_FORWARD',
+        ]
+        fw = fwgen.FwGen(config)
+        zone = 'lan'
+        target = 'zone0_FORWARD'
+        assert list(fw._create_zone_forward(zone, target, True)) == output

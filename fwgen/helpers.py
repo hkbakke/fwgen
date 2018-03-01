@@ -39,16 +39,16 @@ def yaml_load_ordered(stream, Loader=yaml.Loader, object_pairs_hook=OrderedDict)
     return yaml.load(stream, OrderedLoader)
 
 def run_command(cmd):
-    LOGGER.debug("Running command '%s'", ' '.join(cmd))
+    LOGGER.debug("Running command: '%s'", ' '.join(cmd))
     try:
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT,
                                          universal_newlines=True)
     except subprocess.CalledProcessError as e:
         if e.output:
-            LOGGER.error('\n%s', e.output.rstrip('\n'))
+            LOGGER.error('\n%s', e.output.rstrip())
         raise
 
     if output:
-        LOGGER.debug('%s\n%s\n%s\n', '-' * 60, output, '-' * 60)
+        LOGGER.debug('%s\n%s\n%s\n', '-' * 60, output.rstrip(), '-' * 60)
 
     return output

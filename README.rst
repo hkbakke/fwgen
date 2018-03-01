@@ -180,7 +180,7 @@ Put fwcheck somewhere logical for ease of use
 
     cp fwcheck /usr/local/bin/
     
-Add the ssh public key for the root user (normally found in '/root/.ssh/id_rsa.pub') from each of the fwgen firewalls requesting the checks to '/home/fwcheck/.ssh/authorized_keys' on the test server. To restrict the key usage to running the fwchecks only, a set of restrictions should be included. Example:
+Add the ssh public key for the root user (normally found in ``/root/.ssh/id_rsa.pub``) from each of the fwgen firewalls requesting the checks to ``/home/fwcheck/.ssh/authorized_keys`` on the test server. To restrict the key usage to running the fwchecks only, a set of restrictions should be included. Example:
 
 ::
 

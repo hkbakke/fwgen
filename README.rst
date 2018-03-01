@@ -178,7 +178,9 @@ Put fwchk somewhere logical for ease of use
 
 ::
 
-    cp fwchk /usr/local/bin/
+    cd /usr/local/bin
+    wget -O fwchk https://raw.githubusercontent.com/hkbakke/fwgen/master/scripts/fwchk
+    chmod +x fwchk
 
 Add the ssh public key for the root user (normally found in ``/root/.ssh/id_rsa.pub``) from each of the fwgen firewalls requesting the checks to ``/home/fwchk/.ssh/authorized_keys`` on the test server. To restrict the key usage to running the fwchks only, a set of restrictions should be included. Example:
 

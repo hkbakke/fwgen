@@ -173,26 +173,26 @@ Add a user for fwcheck on the test server
 ::
 
     adduser --system --group --shell /bin/bash fwcheck
-    
+
 Put fwcheck somewhere logical for ease of use
 
 ::
 
     cp fwcheck /usr/local/bin/
-    
+
 Add the ssh public key for the root user (normally found in ``/root/.ssh/id_rsa.pub``) from each of the fwgen firewalls requesting the checks to ``/home/fwcheck/.ssh/authorized_keys`` on the test server. To restrict the key usage to running the fwchecks only, a set of restrictions should be included. Example:
 
 ::
 
     command="fwcheck",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty ssh-rsa AAAAB3Nza....
-   
+
 Example fwgen config on the firewalls:
 
 ::
 
     check_commands:
       # Available tests:
-      # 
+      #
       #   tcp-test <target-ip> <target-port>
       #       Tests if a TCP port is open on the target
       #
@@ -202,7 +202,7 @@ Example fwgen config on the firewalls:
       #   default-tests <target-ip>
       #       Test if TCP port 22 is open at the target and if it is reachable by ping
       #
-      - ssh fwtest@<testhost> default-tests <management-ip-of-this-firewall>
+      - ssh -o ConnectTimeout=2 fwtest@<testhost> default-tests <fw-management-ip>
       - <cmd2>
       - <cmd3>
 

@@ -36,7 +36,6 @@ def run_test(cmd):
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=10)
     except subprocess.CalledProcessError as e:
         raise TestException(header + str(e))
-
     return header + output.decode('utf-8').rstrip()
 
 def main():

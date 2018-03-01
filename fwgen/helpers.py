@@ -49,6 +49,6 @@ def run_command(cmd):
         raise
 
     if output:
-        LOGGER.debug('%s\n%s\n%s\n', '-' * 60, output.rstrip('\n'), '-' * 60)
+        LOGGER.debug('%s\n%s\n%s\n', '-' * 60, output, '-' * 60)
 
     return output

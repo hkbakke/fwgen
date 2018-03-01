@@ -163,7 +163,48 @@ For a complete list of the functionality, see:
 
     fwgen --help
 
+Firewall check server setup
+===========================
+
+If you want to make use of the firewall check commands a script is included, `fwtest`_, intended to be hosted at the server performing the tests against your firewalls and called via SSH. As you do not want to allow remote firewalls to be able to execute arbitrary commands on the test server you should add some restrictions, and fwtest helps you enforcing those in a set of standardized checks.
+
+On the test server:
+
+::
+
+    # Add a user for fwtest on the test server
+    adduser --system --group --shell /bin/bash fwtest
+    
+    # Put fwtest somewhere in the path for ease of use
+    cp fwtest /usr/local/bin/
+    
+    # Add the ssh public key for the root user (normally found in '/root/.ssh/id_rsa.pub') from each of the fwgen firewalls
+    # requesting the checks to '/home/fwtest/.ssh/authorized_keys' on the test server.
+    # To restrict the key usage to running the fwtests only a set of restrictions should be included. Example:
+    command="fwtest",no-port-forwarding,no-x11-forwarding,no-agent-forwarding,no-pty ssh-rsa AAAAB3Nza....
+   
+Example fwgen config on the firewalls:
+
+::
+
+    check_commands:
+      # Available tests:
+      # 
+      #   tcp-test <target-ip> <target-port>
+      #       Tests if a TCP port is open on the target
+      #
+      #   ping-test <target-ip>
+      #       Tests if the target is reachable by ping
+      #
+      #   default-tests <target-ip>
+      #       Test if TCP port 22 is open at the target and if it is reachable by ping
+      #
+      - ssh fwtest@<testhost> default-tests <management-ip-of-this-firewall>
+      - <cmd2>
+      - <cmd3>
+
 .. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/config.yml
 .. _default configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/defaults.yml
 .. _fwgen.service: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/fwgen.service
 .. _helper script: https://github.com/hkbakke/fwgen/blob/master/scripts/enable-systemd-service
+.. _fwtest: https://github.com/hkbakke/fwgen/blob/master/scripts/fwtest

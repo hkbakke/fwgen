@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import ipaddress
+import argparse
+import subprocess
+
+
+def validate_ip(ip):
+    return str(ipaddress.ip_address(ip))
+
+def validate_port(port):
+    return str(int(port))
+
+def run_tcp_test(ip, port):
+    valid_ip = validate_ip(ip)
+    valid_port = validate_port(port)
+    print('Checking if TCP port %s is open on %s...' % (port, ip))
+    cmd = ['nc', '-z', '-w 2', valid_ip, valid_port]
+    subprocess.check_call(cmd)
+    print('Port is open!')
+
+def run_ping_test(ip):
+    valid_ip = validate_ip(ip)
+    cmd = ['ping', '-c 2', '-W 2', valid_ip]
+    subprocess.check_call(cmd)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--test', '-t', metavar='COMMAND', help='run test command')
+    args = parser.parse_args()
+
+    if args.test:
+        cmd = args.test.split()
+    else:
+        cmd = os.environ['SSH_ORIGINAL_COMMAND'].split()
+
+    try:
+        if cmd[0] == 'tcp-test' and len(cmd) == 3:
+            run_tcp_test(cmd[1], cmd[2])
+        elif cmd[0] == 'ping-test' and len(cmd) == 2:
+            run_ping_test(cmd[1])
+        elif cmd[0] == 'default-tests' and len(cmd) == 2:
+            run_tcp_test(cmd[1], 22)
+            print()
+            run_ping_test(cmd[1])
+        else:
+            print('Invalid test command')
+            return 1
+    except subprocess.CalledProcessError as e:
+        print(e)
+        return 1
+
+if __name__ == '__main__':
+    sys.exit(main())

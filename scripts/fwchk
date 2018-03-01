@@ -2,11 +2,11 @@
 
 import os
 import sys
-import ipaddress
 import argparse
 import subprocess
 import logging
 from multiprocessing import Pool
+import socket
 
 
 LOGGER = logging.getLogger()
@@ -15,20 +15,21 @@ class TestException(Exception):
     pass
 
 
-def validate_ip(ip):
-    return str(ipaddress.ip_address(ip))
+def validate_host(host):
+    socket.getaddrinfo(host, None)
+    return host
 
 def validate_port(port):
     return str(int(port))
 
-def tcp_test(ip, port):
-    valid_ip = validate_ip(ip)
+def tcp_test(host, port):
+    valid_host = validate_host(host)
     valid_port = validate_port(port)
-    return ['nc', '-v', '-z', '-w 2', valid_ip, valid_port]
+    return ['nc', '-v', '-z', '-w 2', valid_host, valid_port]
 
-def ping_test(ip):
-    valid_ip = validate_ip(ip)
-    return ['ping', '-c 2', '-W 2', valid_ip]
+def ping_test(host):
+    valid_host = validate_host(host)
+    return ['ping', '-c 2', '-W 2', valid_host]
 
 def run_test(cmd):
     header = '>>> %s\n' % ' '.join(cmd)

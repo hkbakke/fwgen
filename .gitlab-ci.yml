@@ -1,0 +1,27 @@
+image: python:3.4-alpine
+
+stages:
+  - test
+  - build
+
+before_script:
+  - ./scripts/get-ci-version
+
+python3.4:
+  stage: test
+  script:
+    - pip install -e .[test]
+    - pylint --errors-only fwgen
+    - PYTHONPATH=. pytest --cov=fwgen -vv
+  tags:
+    - docker
+
+dist:
+  stage: build
+  script:
+    - python setup.py bdist_wheel
+  artifacts:
+    paths:
+      - dist/*.whl
+  tags:
+    - docker

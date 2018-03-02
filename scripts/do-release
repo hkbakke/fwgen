@@ -1,0 +1,11 @@
+#!/bin/sh
+
+version="$1"
+tag="v${version}"
+version_file="fwgen/version.py"
+
+echo "__version__ = '${version}'" > "${version_file}"
+git add "${version_file}"
+git commit "${version_file}" -m "Bump version"
+git tag -a "${tag}"
+git push origin "${tag}"

@@ -1,1 +1,1 @@
-from fwgen.metadata import __version__
+from fwgen.version import __version__

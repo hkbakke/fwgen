@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+
+import os
+
+
+VERSION_FILE = 'fwgen/version.py'
+
+
+# Get current version
+with open(VERSION_FILE, 'r') as f:
+    exec(f.read())
+
+try:
+    tag = os.environ['CI_COMMIT_TAG']
+except KeyError:
+    tag = None
+
+if tag:
+    new_version = tag.lstrip('v')
+else:
+    new_version = '%s.dev%s' % (__version__,  os.environ['CI_PIPELINE_ID'])
+
+with open(VERSION_FILE, 'w') as f:
+    f.write("__version__ = '%s'" % new_version)

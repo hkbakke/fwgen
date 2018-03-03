@@ -234,30 +234,103 @@ class TestFwGen(object):
 
     def test_get_zone_rules(self):
         config = OrderedDefaultDict()
-        config['zones']['LAN']['rules']['filter']['INPUT'] = [
+        config['zones']['lan']['rules']['filter']['INPUT'] = [
             '-p tcp --dport 22 -j ACCEPT',
             '-p icmp --icmp-type echo-request -j ACCEPT',
             '-j CUSTOM_REJECT'
         ]
-        config['zones']['LAN']['rules']['filter']['OUTPUT'] = [
+        config['zones']['lan']['rules']['filter']['FORWARD'] = [
             '-j ACCEPT'
         ]
-        config['zones']['LAN']['rules']['nat']['POSTROUTING'] = [
+        config['zones']['lan']['rules']['filter']['OUTPUT'] = [
+            '-j ACCEPT'
+        ]
+        config['zones']['lan']['rules']['mangle']['PREROUTING'] = [
+            '-j DSCP --set-dscp 18'
+        ]
+        config['zones']['lan']['rules']['nat']['POSTROUTING'] = [
             '-j MASQUERADE'
         ]
         fw = fwgen.FwGen(config)
         rule_list = [
             ('filter', ':zone0_INPUT -'),
-            ('filter', '-A INPUT -i %{LAN} -j zone0_INPUT'),
+            ('filter', '-A INPUT -i %{lan} -j zone0_INPUT'),
             ('filter', '-A zone0_INPUT -p tcp --dport 22 -j ACCEPT'),
             ('filter', '-A zone0_INPUT -p icmp --icmp-type echo-request -j ACCEPT'),
             ('filter', '-A zone0_INPUT -j CUSTOM_REJECT'),
+            ('filter', ':zone0_FORWARD -'),
+            ('filter', '-A FORWARD -i %{lan} -j zone0_FORWARD'),
+            ('filter', '-A zone0_FORWARD -o %{lan} -m comment --comment "Intra-zone" -j ACCEPT'),
+            ('filter', '-A zone0_FORWARD -j ACCEPT'),
             ('filter', ':zone0_OUTPUT -'),
-            ('filter', '-A OUTPUT -o %{LAN} -j zone0_OUTPUT'),
+            ('filter', '-A OUTPUT -o %{lan} -j zone0_OUTPUT'),
             ('filter', '-A zone0_OUTPUT -j ACCEPT'),
+            ('mangle', ':zone0_PREROUTING -'),
+            ('mangle', '-A PREROUTING -i %{lan} -j zone0_PREROUTING'),
+            ('mangle', '-A zone0_PREROUTING -j DSCP --set-dscp 18'),
             ('nat', ':zone0_POSTROUTING -'),
-            ('nat', '-A POSTROUTING -o %{LAN} -j zone0_POSTROUTING'),
+            ('nat', '-A POSTROUTING -o %{lan} -j zone0_POSTROUTING'),
             ('nat', '-A zone0_POSTROUTING -j MASQUERADE')
+        ]
+        assert list(fw._get_zone_rules()) == rule_list
+
+    def test_zone_to_zone_rules(self):
+        config = OrderedDefaultDict()
+        config['zones']['lan']['rules']['filter']['to']['local'] = [
+            '-p tcp --dport 22 -j ACCEPT',
+            '-p icmp --icmp-type echo-request -j ACCEPT',
+            '-j CUSTOM_REJECT'
+        ]
+        config['zones']['lan']['rules']['filter']['to']['wan'] = [
+            '-j ACCEPT',
+        ]
+        config['zones']['lan']['rules']['filter']['to']['default'] = [
+            '-j LOG_REJECT',
+        ]
+        config['zones']['wan']['rules']['filter']['to']['lan'] = [
+            '-j -p tcp --dport 443',
+            '-j DROP'
+        ]
+        config['zones']['local']['rules']['filter']['to']['wan'] = [
+            '-j LOG_ACCEPT',
+        ]
+        config['zones']['local']['rules']['filter']['to']['default'] = [
+            '-j ACCEPT',
+        ]
+        fw = fwgen.FwGen(config)
+        rule_list = [
+            ('filter', ':zone0_INPUT -'),
+            ('filter', '-A INPUT -i %{lan} -j zone0_INPUT'),
+            ('filter', ':zone0_FORWARD -'),
+            ('filter', '-A FORWARD -i %{lan} -j zone0_FORWARD'),
+            ('filter', '-A zone0_FORWARD -o %{lan} -m comment --comment "Intra-zone" -j ACCEPT'),
+            ('filter', ':zone0_to_local -'),
+            ('filter', '-A zone0_INPUT -m comment --comment "lan -> local" -j zone0_to_local'),
+            ('filter', '-A zone0_to_local -p tcp --dport 22 -j ACCEPT'),
+            ('filter', '-A zone0_to_local -p icmp --icmp-type echo-request -j ACCEPT'),
+            ('filter', '-A zone0_to_local -j CUSTOM_REJECT'),
+            ('filter', ':zone0_to_zone1 -'),
+            ('filter', '-A zone0_FORWARD -o %{wan} -m comment --comment "lan -> wan" -j zone0_to_zone1'),
+            ('filter', '-A zone0_to_zone1 -j ACCEPT'),
+            ('filter', ':zone0_default -'),
+            ('filter', '-A zone0_FORWARD -j zone0_default'),
+            ('filter', '-A zone0_INPUT -j zone0_default'),
+            ('filter', '-A zone0_default -j LOG_REJECT'),
+            ('filter', ':zone1_INPUT -'),
+            ('filter', '-A INPUT -i %{wan} -j zone1_INPUT'),
+            ('filter', ':zone1_FORWARD -'),
+            ('filter', '-A FORWARD -i %{wan} -j zone1_FORWARD'),
+            ('filter', '-A zone1_FORWARD -o %{wan} -m comment --comment "Intra-zone" -j ACCEPT'),
+            ('filter', ':zone1_to_zone0 -'),
+            ('filter', '-A zone1_FORWARD -o %{lan} -m comment --comment "wan -> lan" -j zone1_to_zone0'),
+            ('filter', '-A zone1_to_zone0 -j -p tcp --dport 443'),
+            ('filter', '-A zone1_to_zone0 -j DROP'),
+            ('filter', ':local_to_zone1 -'),
+            ('filter', '-A OUTPUT -o %{wan} -m comment --comment "local -> wan" -j local_to_zone1'),
+            ('filter', '-A local_to_zone1 -j LOG_ACCEPT'),
+            ('filter', ':local_default -'),
+            ('filter', '-A OUTPUT -j local_default'),
+            ('filter', '-A local_default -j ACCEPT'),
         ]
         assert list(fw._get_zone_rules()) == rule_list
 
@@ -338,3 +411,41 @@ class TestFwGen(object):
         zone = 'lan'
         target = 'zone0_FORWARD'
         assert list(fw._create_zone_forward(zone, target, False)) == output
+
+    def test_get_zone_id(self):
+        config = OrderedDefaultDict()
+        config['zones']['lan'] = {}
+        config['zones']['wan'] = {}
+        config['zones']['dmz'] = {}
+        fw = fwgen.FwGen(config)
+        assert fw._get_zone_id('lan') == 0
+        assert fw._get_zone_id('wan') == 1
+        assert fw._get_zone_id('dmz') == 2
+
+    def test_get_zone_name(self):
+        config = {
+            'zones': {
+                'lan': {},
+            }
+        }
+        fw = fwgen.FwGen(config)
+        assert fw._get_zone_name('lan') == 'zone0'
+        assert fw._get_zone_name('local') == 'local'
+        assert fw._get_zone_name('default') == 'default'
+
+    def test_create_zone_forward(self):
+        fw = fwgen.FwGen(config={})
+        output = [
+            ':lan_FORWARD -',
+            '-A FORWARD -i %{lan} -j lan_FORWARD',
+            '-A lan_FORWARD -o %{lan} -m comment --comment "Intra-zone" -j ACCEPT'
+        ]
+        assert list(fw._create_zone_forward('lan', 'lan_FORWARD')) == output
+
+    def test_create_zone_forward_no_intra_zone(self):
+        fw = fwgen.FwGen(config={})
+        output = [
+            ':lan_FORWARD -',
+            '-A FORWARD -i %{lan} -j lan_FORWARD',
+        ]
+        assert list(fw._create_zone_forward('lan', 'lan_FORWARD', False)) == output

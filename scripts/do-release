@@ -1,11 +1,51 @@
-#!/bin/sh
+#!/usr/bin/env python3
 
-version="$1"
-tag="v${version}"
-version_file="fwgen/version.py"
+import os
+import sys
+import argparse
+import subprocess
+from distutils.version import LooseVersion
 
-echo "__version__ = '${version}'" > "${version_file}"
-git add "${version_file}"
-git commit "${version_file}" -m "Bump version"
-git tag -a "${tag}"
-git push origin "${tag}"
+FWGEN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+sys.path.insert(0, FWGEN_DIR)
+from fwgen import __version__
+
+
+class InvalidVersion(Exception):
+    pass
+
+
+def get_current_version():
+    return __version__
+
+def update_version_file(version_file, version):
+    with open(version_file, 'w') as f:
+        f.write("__version__ = '%s'" % version)
+
+    commit_message = 'Bump version'
+    subprocess.check_call(['git', 'add', version_file])
+    subprocess.check_call(['git', 'commit', version_file, '-m', commit_message])
+
+def get_tag(version):
+    return 'v%s' % version
+
+def tag_and_push(tag):
+    subprocess.check_call(['git', 'tag', '-a', tag])
+    subprocess.check_call(['git', 'push', 'origin', tag])
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--version', metavar='VERSION', required=True,
+                        help='version for release')
+    args = parser.parse_args()
+
+    current_version = get_current_version()
+    new_version = args.version
+    if LooseVersion(new_version) < LooseVersion(current_version):
+        raise InvalidVersion('%s is lower than %s' % (new_version, current_version))
+    version_file = os.path.join(FWGEN_DIR, 'fwgen', 'version.py')
+    update_version_file(version_file, new_version)
+    tag_and_push(get_tag(new_version))
+
+if __name__ == '__main__':
+    sys.exit(main())

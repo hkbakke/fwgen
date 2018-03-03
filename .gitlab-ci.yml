@@ -15,16 +15,6 @@ python3.4:
   tags:
     - docker
 
-python3.6:
-  image: python:3.6-alpine
-  stage: test
-  script:
-    - pip install -e .[test]
-    - pylint --errors-only fwgen
-    - PYTHONPATH=. pytest --cov=fwgen -vv
-  tags:
-    - docker
-
 dist:
   image: python:3.4-alpine
   stage: build

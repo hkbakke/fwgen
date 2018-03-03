@@ -449,3 +449,36 @@ class TestFwGen(object):
             '-A FORWARD -i %{lan} -j lan_FORWARD',
         ]
         assert list(fw._create_zone_forward('lan', 'lan_FORWARD', False)) == output
+
+    def test_output_rules(self):
+        config = OrderedDefaultDict()
+        config['zones']['wan']['interfaces'] = [
+            'eth1',
+            'eth2'
+        ]
+        rules = [
+            ('filter', ':wan_FORWARD -'),
+            ('filter', '-A FORWARD -i %{wan} -j wan_FORWARD'),
+            ('filter', '-A FORWARD -j DROP'),
+            ('nat', '-A POSTROUTING -o %{wan} -j MASQUERADE')
+        ]
+        fw = fwgen.FwGen(config)
+        output = [
+            '*filter',
+            ':wan_FORWARD -',
+            '-A FORWARD -i eth1 -j wan_FORWARD',
+            '-A FORWARD -i eth2 -j wan_FORWARD',
+            '-A FORWARD -j DROP',
+            'COMMIT',
+            '*nat',
+            '-A POSTROUTING -o eth1 -j MASQUERADE',
+            '-A POSTROUTING -o eth2 -j MASQUERADE',
+            'COMMIT',
+            '*mangle',
+            'COMMIT',
+            '*raw',
+            'COMMIT',
+            '*security',
+            'COMMIT'
+        ]
+        assert fw._output_rules(rules) == output

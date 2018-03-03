@@ -29,6 +29,7 @@ dist:
   image: python:3.4-alpine
   stage: build
   script:
+    - pip install wheel
     - python setup.py bdist_wheel
   artifacts:
     paths:

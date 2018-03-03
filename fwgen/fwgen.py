@@ -17,13 +17,13 @@ from fwgen.helpers import ordered_dict_merge, random_word, run_command
 
 
 LOGGER = logging.getLogger(__name__)
-DEFAULT_CHAINS = {
-    'filter': ['INPUT', 'FORWARD', 'OUTPUT'],
-    'nat': ['PREROUTING', 'INPUT', 'OUTPUT', 'POSTROUTING'],
-    'mangle': ['PREROUTING', 'INPUT', 'FORWARD', 'OUTPUT', 'POSTROUTING'],
-    'raw': ['PREROUTING', 'OUTPUT'],
-    'security': ['INPUT', 'FORWARD', 'OUTPUT']
-}
+DEFAULT_CHAINS = OrderedDict([
+    ('filter', ['INPUT', 'FORWARD', 'OUTPUT']),
+    ('nat', ['PREROUTING', 'INPUT', 'OUTPUT', 'POSTROUTING']),
+    ('mangle', ['PREROUTING', 'INPUT', 'FORWARD', 'OUTPUT', 'POSTROUTING']),
+    ('raw', ['PREROUTING', 'OUTPUT']),
+    ('security', ['INPUT', 'FORWARD', 'OUTPUT'])
+])
 
 
 class InvalidChain(Exception):

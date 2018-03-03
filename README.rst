@@ -208,8 +208,8 @@ Example fwgen config on the firewalls:
       - <cmd2>
       - <cmd3>
 
-.. _example configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/config.yml
-.. _default configuration: https://github.com/hkbakke/fwgen/blob/master/fwgen/etc/defaults.yml
-.. _fwgen.service: https://github.com/hkbakke/fwgen/blob/master/fwgen/doc/examples/fwgen.service
-.. _helper script: https://github.com/hkbakke/fwgen/blob/master/scripts/enable-systemd-service
-.. _fwchk: https://github.com/hkbakke/fwgen/blob/master/scripts/fwchk
+.. _example configuration: https://gitlab.proikt.com/hk/fwgen/raw/master/fwgen/doc/examples/config.yml
+.. _default configuration: https://gitlab.proikt.com/hk/fwgen/raw/master/fwgen/etc/defaults.yml
+.. _fwgen.service: https://gitlab.proikt.com/hk/fwgen/raw/master/fwgen/doc/examples/fwgen.service
+.. _helper script: https://gitlab.proikt.com/hk/fwgen/raw/master/scripts/enable-systemd-service
+.. _fwchk: https://gitlab.proikt.com/hk/fwgen/raw/master/scripts/fwchk
